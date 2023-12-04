@@ -207,17 +207,7 @@ def convert_tpl_to_android_dex(downloaded_tpl):
             arr_file = tpl_file_path.split("\\")[-1]
             aar_name = os.path.splitext(arr_file)[0]  # 分离文件名 和 后缀名
 
-            # todo:
-            """
-                    if not zipfile.is_zipfile(file):
-            print('{}该文件不是压缩文件'.format(file))
-        else:
-            try:
-                with zipfile.ZipFile(file, 'r') as zip_file:
-                    print(zip_file.namelist())
-            except zipfile.BadZipfile:
-                print('{}无法打开受损的zipfile'.format(file))
-            """
+            # 解压文件夹更新
             if not zipfile.is_zipfile(tpl_file_path):
                 pass
             else:
