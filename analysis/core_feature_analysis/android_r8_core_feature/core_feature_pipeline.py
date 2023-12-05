@@ -29,7 +29,7 @@ from database.utils.denpendency_business_utils import get_front_dependencies_fro
 
 public_library_path = r'D:\Android-exp\public-library'
 public_dex_path = r'D:\Android-exp\public-dex'
-base_rule_config_path = r'D:\Android-exp\r8-config'
+base_rule_config_path = r'D:\Android-exp\r8-config-faketraveler'
 
 # 日志相关配置
 TEST_FORMAT = '%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s:%(lineno)d - %(message)s'
@@ -45,16 +45,16 @@ def read_dependency_file(dependency_file_path):
         content = f.readlines()
         for line in content:
             tpl = line.split('@')[0]
-            ext = line.split('@')[1]
+            # ext = line.split('@')[1]
             tpl = tpl.replace('|', '').replace('+', '').replace('---', '').replace('\\', '').lstrip()
             if '>' in tpl:
                 tpl = tpl.split('->')
                 gav = tpl[0].split(':')
                 final_gav = gav[0] + ':' + gav[1] + ':' + tpl[1].strip().replace('(*)', '').replace('(c)', '').strip()
-                dependencies_list.append((final_gav, ext))
+                dependencies_list.append(final_gav)
             else:
                 _gav = tpl.replace('(*)', '').replace('(c)', '').strip()
-                dependencies_list.append((_gav, ext))
+                dependencies_list.append(_gav)
     print('原依赖树依赖项个数：', len(dependencies_list))
     print('去重之后依赖项个数：', len(set(dependencies_list)))
     return set(dependencies_list)
@@ -288,7 +288,7 @@ def analysis_method_entry_from_dependency(format_dex_name, target_dex_path, conv
     for method in target_dvm.get_methods():
         target_method_full_name_list.append(method.full_name)
 
-    # keep rule
+    # config_output_path = 配置文件输出路径 + 每个dex的名称
     config_output_path = os.path.join(base_rule_config_path, format_dex_name)
     # todo 提前判断
     if not os.path.exists(config_output_path):
@@ -308,6 +308,7 @@ def analysis_method_entry_from_dependency(format_dex_name, target_dex_path, conv
                 logger.debug('已经生成过config,无需再次config {}'.format(final_format_keep_rule_path))
                 continue
 
+            # analysis method entry
             if file_ext == '.dex':
                 method_entry_list = []
                 _, fd_dvm, fd_dx = AnalyzeDex(file)
@@ -318,7 +319,7 @@ def analysis_method_entry_from_dependency(format_dex_name, target_dex_path, conv
                 if method_entry_list:
                     format_method_keep_rules = tools.tools.format_method_keep_rule(method_entry_list)
                     # 写入文件
-                    with open(r'%s\%s-keep-rule.cfg' % (config_output_path, file_name[:-4]), 'w') as f:
+                    with open(final_format_keep_rule_path, 'w') as f:
                         for kr in format_method_keep_rules:
                             f.write(kr + '\n')
                         # 追加默认配置
@@ -341,6 +342,7 @@ def generate_shrink_android_dex(input_library_path, config_output_path, shrink_i
         # 2023-12-04 修改
         for config_file in tools.tools.list_all_files(config_output_path):
             config_file_name = config_file.split('\\')[-1][:-4]
+
             old_path = os.path.join(shrink_item_path, 'classes.dex')
             new_path = os.path.join(shrink_item_path, config_file_name[:-10] + '.dex')
             # 当前dex已经shrink，跳过即可
@@ -359,6 +361,8 @@ def generate_shrink_android_dex(input_library_path, config_output_path, shrink_i
                 os.system(cmd)
             except Exception:
                 print("Android R8 Error")
+                # 发生异常 跳过
+                continue
             # 重命名
             try:
                 # 2023-09-20 修改
@@ -441,15 +445,20 @@ def save_core_feature_to_db(dex_folder_name, cluster_num, cluster_result):
 
 def pre_main(dependency_file_path, shrink_dex_path):
     dependency_list = read_dependency_file(dependency_file_path)
-    for tpl_name, ext in dependency_list:  # ext（后缀名）这暂时没有使用
+
+    for tpl_name in dependency_list:
         gav = format_tpl_name(tpl_name)
 
         # downloaded_tpl[0] 为 target_tpl
         # 得到所有 已经下载过的 和 当前下载完成的 gav_file路径集合
         downloaded_tpl = download_dependency(gav)
 
-        # todo: 后续需要判断
+        # todo:
         logger.debug(tpl_name.replace(':', '@') + '<--->' + downloaded_tpl[0].split('\\')[-1][:-4])
+
+        # 判断当前目标tpl是否在已经下载的目录中
+        if tpl_name.replace(':', '@') != downloaded_tpl[0].split('\\')[-1][:-4]:
+            continue
 
         # 得到所有 已经转换过的dex 和 当前转换完成的dex 文件路径集合
         converted_android_dex = convert_tpl_to_android_dex(downloaded_tpl)
@@ -457,16 +466,15 @@ def pre_main(dependency_file_path, shrink_dex_path):
         target_dex_name = converted_android_dex[0].split('\\')[-1][:-4]
         format_dex_name = tpl_name.replace(':', '@')
         if format_dex_name == target_dex_name:
-            # todo: 默认配置文件的位置后续可能需要修改
-            base_rule_path = r"D:\Android-exp\exp-example\haircomb\configuration.txt"
+            # todo: 添加默认的配置文件内容，默认配置文件的位置后续可能需要修改
+            base_rule_path = r"D:\Android-exp\exp-example\faketraveler\configuration.txt"
             with open(base_rule_path, 'r', encoding='utf-8') as f:
                 default_config = f.readlines()
 
             # 生成r8配置文件
             config_output_path = analysis_method_entry_from_dependency(format_dex_name, converted_android_dex[0],
                                                                        converted_android_dex, default_config)
-
-            input_library_path = os.path.join(public_library_path, format_dex_name + '.' + ext)
+            input_library_path = downloaded_tpl[0]
             shrink_item_path = os.path.join(shrink_dex_path, format_dex_name)
 
             generate_shrink_android_dex(input_library_path, config_output_path, shrink_item_path)
@@ -488,8 +496,8 @@ if __name__ == '__main__':
         os.makedirs(base_rule_config_path)
 
     # todo:项目依赖文件
-    dep_file_path = r'D:\Desktop\haircomb_dependencies.txt'
+    dep_file_path = r"D:\Desktop\faketraveler_dependencies.txt"
     # todo: shrink-dex输出文件夹
-    shrink_dex_output_path = r'D:\Android-exp\shrink-dex-output'
+    shrink_dex_output_path = r'D:\Android-exp\shrink-dex-output-faketraveler'
 
     pre_main(dep_file_path, shrink_dex_output_path)
