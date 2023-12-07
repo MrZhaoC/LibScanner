@@ -453,6 +453,9 @@ def pre_main(dependency_file_path, shrink_dex_path):
         # 得到所有 已经下载过的 和 当前下载完成的 gav_file路径集合
         downloaded_tpl = download_dependency(gav)
 
+        if len(downloaded_tpl) == 0:
+            continue
+
         # todo:
         logger.debug(tpl_name.replace(':', '@') + '<--->' + downloaded_tpl[0].split('\\')[-1][:-4])
 
@@ -463,25 +466,30 @@ def pre_main(dependency_file_path, shrink_dex_path):
         # 得到所有 已经转换过的dex 和 当前转换完成的dex 文件路径集合
         converted_android_dex = convert_tpl_to_android_dex(downloaded_tpl)
 
-        target_dex_name = converted_android_dex[0].split('\\')[-1][:-4]
-        format_dex_name = tpl_name.replace(':', '@')
-        if format_dex_name == target_dex_name:
-            # todo: 添加默认的配置文件内容，默认配置文件的位置后续可能需要修改
-            base_rule_path = r"D:\Android-exp\exp-example\faketraveler\configuration.txt"
-            with open(base_rule_path, 'r', encoding='utf-8') as f:
-                default_config = f.readlines()
+        if len(converted_android_dex) == 0:
+            continue
 
-            # 生成r8配置文件
-            config_output_path = analysis_method_entry_from_dependency(format_dex_name, converted_android_dex[0],
-                                                                       converted_android_dex, default_config)
-            input_library_path = downloaded_tpl[0]
-            shrink_item_path = os.path.join(shrink_dex_path, format_dex_name)
-
-            generate_shrink_android_dex(input_library_path, config_output_path, shrink_item_path)
-
-            logger.critical('tpl:{} dex:{} config:{} shrink:{}'.format(len(downloaded_tpl), len(converted_android_dex),
-                                                                       len(os.listdir(config_output_path)),
-                                                                       len(os.listdir(shrink_item_path))))
+        # todo: step 1: 构建r8配置文件和shrink dex
+        # target_dex_name = converted_android_dex[0].split('\\')[-1][:-4]
+        # format_dex_name = tpl_name.replace(':', '@')
+        # if format_dex_name == target_dex_name:
+        #     # todo: 添加默认的配置文件内容，默认配置文件的位置后续可能需要修改
+        #     base_rule_path = r"D:\Android-exp\exp-example\faketraveler\configuration.txt"
+        #     with open(base_rule_path, 'r', encoding='utf-8') as f:
+        #         default_config = f.readlines()
+        #
+        #     # 生成r8配置文件
+        #     config_output_path = analysis_method_entry_from_dependency(format_dex_name, converted_android_dex[0],
+        #                                                                converted_android_dex, default_config)
+        #     input_library_path = downloaded_tpl[0]
+        #     shrink_item_path = os.path.join(shrink_dex_path, format_dex_name)
+        #
+        #     generate_shrink_android_dex(input_library_path, config_output_path, shrink_item_path)
+        #
+        #     logger.critical('tpl:{} dex:{} config:{} shrink:{}'.format(len(downloaded_tpl), len(converted_android_dex),
+        #                                                                len(os.listdir(config_output_path)),
+        #                                                                len(os.listdir(shrink_item_path))))\
+    # todo 2: 收缩的dex选择阈值划分存储特征数据库
     # 到此处，经过shrink的dex已经全部完成，准备构建核心特征
     # 此函数包含 核心特征划分 和 存取数据库
     # process_core_feature_set(shrink_dex_path)
@@ -496,7 +504,7 @@ if __name__ == '__main__':
         os.makedirs(base_rule_config_path)
 
     # todo:项目依赖文件
-    dep_file_path = r"D:\Desktop\faketraveler_dependencies.txt"
+    dep_file_path = r"D:\Desktop\activityrunner_dependencies.txt"
     # todo: shrink-dex输出文件夹
     shrink_dex_output_path = r'D:\Android-exp\shrink-dex-output-faketraveler'
 

@@ -2,7 +2,7 @@ import os
 import warnings
 import zipfile
 
-from tools import tools
+import tools
 from tools.tools import list_all_files
 
 DOT_DEX = '.dex'

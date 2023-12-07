@@ -1,5 +1,6 @@
 from database.utils import database_utils_pool_1
 
+# TABLE_NAME = 'mvn_tpl_feature'
 TABLE_NAME = 'haircomb_1'
 # TABLE_NAME = 'faketraveler'
 
@@ -25,7 +26,8 @@ def get_all_by_tpl_name_and_table_name(table_name, tpl_name):
 
 
 def insert_core_feature(tpl_name, core_class_count, core_method_count, core_fined_feature_list):
-    sql = "INSERT INTO {} (tpl_name, core_cla_count, core_method_count, core_fined_feature) VALUES (%s, %s, %s, %s)".format(TABLE_NAME)
+    sql = "INSERT INTO {} (tpl_name, core_cla_count, core_method_count, core_fined_feature) VALUES (%s, %s, %s, %s)".format(
+        TABLE_NAME)
     value = [tpl_name, core_class_count, core_method_count, str(core_fined_feature_list)]
     database_utils_pool_1.insert_one(sql, value)
 

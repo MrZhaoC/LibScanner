@@ -11,7 +11,7 @@ from tools import tools
                  D:\\Android-exp\\exp-example\\haircomb\\shrink-dex
 """
 
-dex_dir_path = r'D:\Android-exp\exp-example\apk-haircomb\shrink-dex'
+dex_dir_path = r'D:\Android-exp\shrink-dex-output'
 
 
 def dex_all_dependency_generate_core_feature():

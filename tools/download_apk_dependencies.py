@@ -1,7 +1,7 @@
 import os
 
 from database.utils import database_utils_pool
-from tools import tools
+import tools
 
 
 def deal_dependency_tree_from_file(dependency_tree_path):

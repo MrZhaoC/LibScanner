@@ -682,6 +682,8 @@ def compare_core_feature_1():
             print('%-80s %-20s  %s' % (db_tpl_name, 0, 'core_feature_cluster'))
             # res.append([db_tpl_name, clusters_num, db_tpl_core_method_count, 0])
     # return res
+
+
 def format_features_from_db():
     data = feature_business_utils.get_all_tpl_feature()
     for tpl_info in data:

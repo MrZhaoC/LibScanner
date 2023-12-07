@@ -12,6 +12,7 @@ def get_google_mvn_tpl_from_db():
         group_id = item['group_id']
         artifact_id = item['artifact_id']
         version_num = item['version']
+        # 排除测试版本的影响
         if '-' in version_num:
             continue
         result.append([group_id, artifact_id, version_num])
@@ -53,6 +54,7 @@ if __name__ == '__main__':
     more_ten_and_less_hundred = []
     more_zero_and_less_ten = []
     zero = []
+    _zero = []
 
     for name, mvn_cnt, google_mvn_cnt in output_result:
         sum = int(mvn_cnt) + int(google_mvn_cnt)
@@ -68,6 +70,7 @@ if __name__ == '__main__':
             more_zero_and_less_ten.append(name)
         else:
             zero.append(name)
+
 
     print(len(more_ten_thousand), len(more_thousand_and_less_ten_thousand), len(more_hundred_and_less_thousand),
           len(more_ten_and_less_hundred), len(more_zero_and_less_ten), len(zero))
