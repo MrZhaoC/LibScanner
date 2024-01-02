@@ -7,6 +7,24 @@ import os
 
 base_url = 'https://f-droid.org'
 
+"""
+science-education
+sports-health 
+internet 
+connectivity 
+development *
+games
+graphics
+money
+multimedia
+navigation
+phone-sms
+reading
+security
+system
+theming
+writing
+"""
 # 获取应用列表页面
 app_list_url = f'{base_url}/categories/development/'
 app_list_page = requests.get(app_list_url)
@@ -28,7 +46,7 @@ if '/en/packages/' in app_links:
     app_links.remove('/en/packages/')
 
 # 创建下载目录
-download_dir = r'D:\apkandsource'
+download_dir = r'F:\zc-data\apk-source\new-download-source'
 os.makedirs(download_dir, exist_ok=True)
 
 apk_path = os.path.join(download_dir, 'apks')

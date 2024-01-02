@@ -75,7 +75,7 @@ def cluster_sets(similarity_graph):
 
 
 def format_core_feature_clusters(sets):
-    threshold = 0.8
+    threshold = 0.9
     similarity_graph = build_similarity_graph(sets, threshold)
     clusters = cluster_sets(similarity_graph)
 

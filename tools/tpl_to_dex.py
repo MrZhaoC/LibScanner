@@ -3,7 +3,6 @@ import warnings
 import zipfile
 
 import tools
-from tools.tools import list_all_files
 
 DOT_DEX = '.dex'
 DOT_AAR = '.aar'
@@ -14,12 +13,21 @@ warnings.filterwarnings("ignore")
 
 def preprocessing(tpl_file_path, output_path):
     print(tpl_file_path)
-    files = list_all_files(tpl_file_path)
+    files = tools.list_all_files(tpl_file_path)
     for file in files:
         parent_dir = os.path.dirname(file)
 
-        # aar处理，先提取jar文件，然后重命名处理
-        if file.endswith(DOT_AAR) and file.replace(DOT_AAR, DOT_JAR) not in files:
+        file_name = file.split('\\')[-1][:-4]
+
+        dex_file_name = file_name + '.dex'
+
+        dex_file_path = os.path.join(output_path, dex_file_name)
+
+        if os.path.exists(dex_file_path):
+            print("文件已经存在 %s" % dex_file_name)
+            continue
+
+        if file.endswith(DOT_AAR):
             # 解压 提取classes.jar 文件
             arr_file = file.split("\\")[-1]
             aar_name = os.path.splitext(arr_file)[0]  # 分离文件名 和 后缀名
@@ -66,6 +74,7 @@ def jar_to_dex(jar_file, output_path, aar_flag):
               r"--release  " \
               r"--intermediate " \
               r"--output {1} " \
+              r"--min-api 26 "\
               r"--lib E:\android\sdk\platforms\android-33\android.jar".format(jar_file, output_path)
         os.system(cmd)
 
@@ -75,6 +84,9 @@ def jar_to_dex(jar_file, output_path, aar_flag):
                 os.remove(jar_file)
             except Exception:
                 print("{} 文件删除失败".format(jar_file))
+
+        if not os.path.exists(os.path.join(output_path, 'classes.dex')):
+            return
 
         try:
             os.rename(os.path.join(output_path, 'classes.dex'), os.path.join(output_path, dex_file_name))
@@ -122,7 +134,7 @@ if __name__ == '__main__':
     # dependencies_tree_path = r'D:\Android-exp\exp-example\faketraveler\multi-version.txt'
     # multiple_dependencies_dir(tpl_dir, dependencies_tree_path)
 
-    input_library_path = r'D:\Android-exp\exp-example\haircomb\lifecycle-common\library'
-    output_dex_path = r'D:\Android-exp\exp-example\haircomb\lifecycle-common\library'
+    input_library_path = r'D:\mvn-library'
+    output_dex_path = r'D:\mvn-dex'
 
     preprocessing(input_library_path, output_dex_path)

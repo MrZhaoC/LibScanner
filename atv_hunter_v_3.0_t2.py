@@ -622,7 +622,8 @@ def compare_core_feature_1():
         if db_tpl_core_class_count == 0 or db_tpl_core_fine_grained_feature is None or len(
                 db_tpl_core_fine_grained_feature) == 0:
             # print('%-80s %s' % (db_tpl_name, 0))
-            res.append([db_tpl_name, 0, db_tpl_core_method_count, 0])
+            # res.append([db_tpl_name, 0, db_tpl_core_method_count, 0])
+            print('%-80s %-20s  %s' % (db_tpl_name, 0, 'no_core_feature'))
             continue
 
         sim = 0
@@ -657,7 +658,7 @@ def compare_core_feature_1():
         # 核心特征并集特征相似度达到阈值之后不再进行比较
         if sim >= TPL_SIM_THRESHOLD:
             print('%-80s %-20s  %s' % (db_tpl_name, sim, 'core_feature_union'))
-            break
+            continue
 
         # 核心特征并集特征相似度到不到阈值，继续比较划分后的核心特征
         clusters_num, clusters = get_current_dex_core_feature_clusters(db_tpl_name)  # 得到划分后的核心特征集合
@@ -691,10 +692,10 @@ if __name__ == '__main__':
     db_tpl_feature_info = format_features_from_db()
 
     # main()
-    compare_all_fine_grained_feature()
+    # compare_all_fine_grained_feature()
     # compare_core_feature()
 
-    # compare_core_feature_1()
+    compare_core_feature_1()
 
     # write_file_flag = False
     # path = r"D:\zc\第三方库检测实验数据\2023-09-07.xlsx"

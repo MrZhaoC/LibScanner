@@ -2,12 +2,14 @@ import hashlib
 import os
 
 import pyssdeep
-from androguard.misc import AnalyzeDex
+from androguard.misc import AnalyzeDex, get_default_session
 
 from database.utils import feature_business_utils
 
 # dex_path = r'F:\maven-data\haircomb\format_jar\nnnDex'
-dex_path = r'D:\Android-exp\exp-example\apk-haircomb\shrink-dex'
+# dex_path = r'D:\Android-exp\exp-example\apk-haircomb\shrink-dex'
+
+dex_path = r'D:\Android-exp\public-dex'
 
 
 def get_all_feature():
@@ -33,6 +35,10 @@ def process_dex_files(android_dex_path):
             _, dex_dvm, dex_dx = AnalyzeDex(dex_file)
             print(tpl_name)
             generate_feature(dex_dvm, dex_dx, tpl_name)
+
+            # 清空session，减少内存占用
+            session = get_default_session()
+            session.reset()
 
 
 def generate_feature(d, dx, tpl_name):

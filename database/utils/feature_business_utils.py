@@ -1,7 +1,7 @@
 from database.utils import database_utils_pool_1
 
-# TABLE_NAME = 'mvn_tpl_feature'
-TABLE_NAME = 'haircomb_1'
+TABLE_NAME = 'mvn_tpl_feature'
+# TABLE_NAME = 'haircomb_all_dependency'
 # TABLE_NAME = 'faketraveler'
 
 

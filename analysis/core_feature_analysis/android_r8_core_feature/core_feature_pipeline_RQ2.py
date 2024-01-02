@@ -29,7 +29,7 @@ from database.utils.denpendency_business_utils import get_front_dependencies_fro
 
 public_library_path = r'D:\Android-exp\public-library'
 public_dex_path = r'D:\Android-exp\public-dex'
-base_rule_config_path = r'D:\Android-exp\r8-config'
+base_rule_config_path = r'F:\zc-data\RQ\RQ1\r8-config'
 
 # 日志相关配置
 TEST_FORMAT = '%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s:%(lineno)d - %(message)s'
@@ -493,7 +493,7 @@ def pre_main(dependency_file_path, shrink_dex_path):
             logger.critical('tpl:{} dex:{} config:{} shrink:{}'.format(len(downloaded_tpl), len(converted_android_dex),
                                                                        len(os.listdir(config_output_path)),
                                                                        len(os.listdir(shrink_item_path)))) \
-    # todo 2: 收缩的dex选择阈值划分存储特征数据库
+                # todo 2: 收缩的dex选择阈值划分存储特征数据库
     # 到此处，经过shrink的dex已经全部完成，准备构建核心特征
     # 此函数包含 核心特征划分 和 存取数据库
     # process_core_feature_set(shrink_dex_path)
@@ -508,8 +508,8 @@ if __name__ == '__main__':
         os.makedirs(base_rule_config_path)
 
     # todo:项目依赖文件
-    dep_file_path = r"F:\zc-data\apk-source\all-dependency.txt"
+    dep_file_path = r"F:\zc-data\RQ\RQ1\all-dependency.txt"
     # todo: shrink-dex输出文件夹
-    shrink_dex_output_path = r'D:\Android-exp\shrink-dex-output'
+    shrink_dex_output_path = r'F:\zc-data\RQ\RQ1\shrink-dex-output'
 
     pre_main(dep_file_path, shrink_dex_output_path)

@@ -3,6 +3,7 @@ import time
 
 import requests
 
+import tools.tools
 from database.utils.feature_business_utils import get_feature_info_by_tpl_name
 from generate_feature import process_dex_files
 from tools.tpl_to_dex import preprocessing
@@ -11,19 +12,20 @@ mvn_base_link = r'https://repo1.maven.org/maven2/'
 mvn_file_path = r"D:\Android-exp\gav_index_popular.txt"
 
 # public_library_path = r'D:\Android-exp\public-library'
+public_mvn_dex_path = r'D:\mvn-dex'
 
 queue = []
 
 
 def get_popular_mvn_data(output_path):
-    # files = tools.tools.list_all_files(public_library_path)
+    files = tools.tools.list_all_files(public_mvn_dex_path)
     result = []
     with open(mvn_file_path, 'r', encoding='utf-8') as f:
         items = f.readlines()
     for item in items:
         gav = item.split(";")[0]
         popular = int(item.split(";")[1])
-        if popular < 1000:
+        if popular < 50:
             continue
         # 查询数据库，判断当前tpl是否已经完成特征的构建存储
         # if check_db(item.split(";")[0]):
@@ -38,6 +40,13 @@ def get_popular_mvn_data(output_path):
         #     print('public library已经存在 %s' % tpl_file_name)
         #     queue.append(os.path.join(output_path, tpl_file_name))
         #     continue
+
+        # todo: 判断当前tpl是否已经转换过DEX
+        public_dex_path = check_public_dex(item.split(";")[0], files)
+
+        if public_dex_path:
+            print('dex file 已经存在 %s' % item.split(";")[0])
+            continue
 
         jar_file_path = os.path.join(output_path, gav.replace(':', '@') + '.jar')
         aar_file_path = os.path.join(output_path, gav.replace(':', '@') + '.aar')
@@ -57,14 +66,22 @@ def check_db(gav):
     return item
 
 
-def check_public_library(gav, files):
-    public_lib_tpl_path = None
+# def check_public_library(gav, files):
+#     public_lib_tpl_path = None
+#     for file in files:
+#         format_file_name = file.split('\\')[-1][:-4]
+#         if gav == format_file_name:
+#             public_lib_tpl_path = file
+#             break
+#     return public_lib_tpl_path
+
+
+def check_public_dex(gav, files):
     for file in files:
-        format_file_name = file.split('\\')[-1][:-4]
+        format_file_name = file.split('\\')[-1][:-4].replace('@', ':')
         if gav == format_file_name:
-            public_lib_tpl_path = file
-            break
-    return public_lib_tpl_path
+            return True
+    return False
 
 
 def construct_complete_link_download(output_path):

@@ -278,6 +278,7 @@ def compose_graph():
 
 # tpl_feature_hash_info: [[cla_count, fined_features],...] 该方法在比较核心特征时使用
 def CFG_opcode():
+    module_item_class_names = []
     apk_candidate_feature_info = []
     dependency_graph = compose_graph()
     for con_components in nx.connected_components(dependency_graph):
@@ -285,9 +286,10 @@ def CFG_opcode():
         for cla in con_components:
             cla = dx.classes[cla]
             cla_list.append(cla.name)
+        module_item_class_names.append(cla_list)
         cla_count, fined_features = generate_feature.generate_fined_feature_cfg(dx, cla_list)
         apk_candidate_feature_info.append([cla_count, fined_features])
-    return dependency_graph, apk_candidate_feature_info
+    return dependency_graph, module_item_class_names, apk_candidate_feature_info
 
 
 def main():
@@ -605,7 +607,7 @@ def compare_core_feature():
 
 
 def compare_core_feature_1():
-    dependency_graph, apk_candidate_feature_info = CFG_opcode()
+    dependency_graph, module_item_class_names, apk_candidate_feature_info = CFG_opcode()
 
     METHOD_SIM_THRESHOLD = 0.85
     TPL_SIM_THRESHOLD = 0.95
@@ -620,6 +622,7 @@ def compare_core_feature_1():
         db_tpl_core_method_count = db_tpl_item['core_method_count']
         db_tpl_core_fine_grained_feature = db_tpl_item['core_fined_feature']
 
+        #
         # mvn_dependency = query_current_dependency_from_mvn(db_tpl_name.split(':'))
         # google_maven_dependency = query_current_dependency_from_google_mvn(db_tpl_name.split(':'))
         # apk_dependency = get_curr_parents(db_tpl_name)
@@ -663,9 +666,15 @@ def compare_core_feature_1():
                 best_match_method_list = match_method_list
                 # best_match_tpl_name = db_tpl_name
 
+        # todo:
+        apk_method_names_cnt, dex_method_names_cnt = validate_apk_shrink_method(dx, module_item_class_names,
+                                                                                db_tpl_name)
+
         # 核心特征并集特征相似度达到阈值之后不再进行比较
         if sim >= TPL_SIM_THRESHOLD:
-            print('%-80s %-20s %-20s %-20s %s' % (db_tpl_name, sim, len(best_match_method_list), len(db_tpl_core_fine_grained_feature), 'core_feature_union'))
+            print('%-80s %-20s %-10s %-10s %-10s %-10s %s' % (
+                db_tpl_name, sim, apk_method_names_cnt, dex_method_names_cnt, len(best_match_method_list),
+                len(db_tpl_core_fine_grained_feature), 'core_feature_union'))
             # break
             continue
 
@@ -700,11 +709,11 @@ if __name__ == '__main__':
     get_class_names()
     db_tpl_feature_info = format_features_from_db()
 
-    main()
+    # main()
     # compare_all_fine_grained_feature()
     # compare_core_feature()
 
-    # compare_core_feature_1()
+    compare_core_feature_1()
 
     # write_file_flag = False
     # path = r"D:\zc\第三方库检测实验数据\2023-09-07.xlsx"
