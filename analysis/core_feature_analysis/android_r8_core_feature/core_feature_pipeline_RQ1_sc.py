@@ -29,7 +29,7 @@ from database.utils.denpendency_business_utils import get_front_dependencies_fro
 
 public_library_path = r'D:\Android-exp\public-library'
 public_dex_path = r'D:\Android-exp\public-dex'
-base_rule_config_path = r'F:\zc-data\RQ\RQ1\r8-config'
+base_rule_config_path = r'F:\zc-data\RQ\RQ1\small-scale\r8-config'
 
 # 日志相关配置
 TEST_FORMAT = '%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s:%(lineno)d - %(message)s'
@@ -295,43 +295,45 @@ def analysis_method_entry_from_dependency(format_dex_name, target_dex_path, conv
     # todo 提前判断
     if not os.path.exists(config_output_path):
         os.makedirs(config_output_path)
-    else:
-        for i, file in enumerate(converted_android_dex):
-            if i == 0:
-                continue
-            # 获取文件名和后缀
-            file_name = file.split('\\')[-1]
-            file_ext = os.path.splitext(file)[-1]
+    # else:
 
-            # 2023-12-04 修改
-            final_format_keep_rule_path = r'%s\%s-keep-rule.cfg' % (config_output_path, file_name[:-4])
-            # 已经生成过keep-rule-cfg，跳过即可
-            if os.path.exists(final_format_keep_rule_path):
-                logger.debug('已经生成过config,无需再次config {}'.format(final_format_keep_rule_path))
-                continue
+    # 2024-01-02修改
+    for i, file in enumerate(converted_android_dex):
+        if i == 0:
+            continue
+        # 获取文件名和后缀
+        file_name = file.split('\\')[-1]
+        file_ext = os.path.splitext(file)[-1]
 
-            # analysis method entry
-            if file_ext == '.dex':
-                method_entry_list = []
-                _, fd_dvm, fd_dx = AnalyzeDex(file)
-                for class_x in fd_dx.get_classes():
-                    for method_x in class_x.get_methods():
-                        if method_x.full_name in target_method_full_name_list:
-                            method_entry_list.append(method_x)
-                if method_entry_list:
-                    format_method_keep_rules = tools.tools.format_method_keep_rule(method_entry_list)
-                    # 写入文件
-                    with open(final_format_keep_rule_path, 'w') as f:
-                        for kr in format_method_keep_rules:
-                            f.write(kr + '\n')
-                        # 追加默认配置
-                        f.writelines(default_config)
-                else:
-                    print('方法入口集合为空', file)
+        # 2023-12-04 修改
+        final_format_keep_rule_path = r'%s\%s-keep-rule.cfg' % (config_output_path, file_name[:-4])
+        # 已经生成过keep-rule-cfg，跳过即可
+        if os.path.exists(final_format_keep_rule_path):
+            logger.debug('已经生成过config,无需再次config {}'.format(final_format_keep_rule_path))
+            continue
 
-                # 清空session，减少内存占用
-                session = get_default_session()
-                session.reset()
+        # analysis method entry
+        if file_ext == '.dex':
+            method_entry_list = []
+            _, fd_dvm, fd_dx = AnalyzeDex(file)
+            for class_x in fd_dx.get_classes():
+                for method_x in class_x.get_methods():
+                    if method_x.full_name in target_method_full_name_list:
+                        method_entry_list.append(method_x)
+            if method_entry_list:
+                format_method_keep_rules = tools.tools.format_method_keep_rule(method_entry_list)
+                # 写入文件
+                with open(final_format_keep_rule_path, 'w', encoding='utf-8') as f:
+                    for kr in format_method_keep_rules:
+                        f.write(kr + '\n')
+                    # 追加默认配置
+                    f.writelines(default_config)
+            else:
+                print('方法入口集合为空', file)
+
+            # 清空session，减少内存占用
+            session = get_default_session()
+            session.reset()
 
     return config_output_path
 
@@ -340,42 +342,43 @@ def generate_shrink_android_dex(input_library_path, config_output_path, shrink_i
     # todo: 提起判断，已经完成shrink的直接返回
     if not os.path.exists(shrink_item_path):
         os.makedirs(shrink_item_path)
-    else:
-        # 2023-12-04 修改
-        for config_file in tools.tools.list_all_files(config_output_path):
-            config_file_name = config_file.split('\\')[-1][:-4]
+    # else:
 
-            old_path = os.path.join(shrink_item_path, 'classes.dex')
-            new_path = os.path.join(shrink_item_path, config_file_name[:-10] + '.dex')
-            # 当前dex已经shrink，跳过即可
-            if os.path.exists(new_path):
-                logger.debug('已经完成过shrink,无需再次shrink {}'.format(new_path))
-                continue
-            try:
-                cmd = 'java -jar  %s ' \
-                      '--release ' \
-                      '--no-minification ' \
-                      '--output %s ' \
-                      '--pg-conf %s ' \
-                      '--lib E:\\android\\sdk\\platforms\\android-33\\android.jar ' \
-                      '--lib E:\\JDK8 %s' \
-                      % ('../../../libs/r8-3.2.74.jar', shrink_item_path, config_file, input_library_path)
-                os.system(cmd)
-            except Exception:
-                print("Android R8 Error")
-                # 发生异常 跳过
-                continue
-            # 重命名
-            try:
-                # 2023-09-20 修改
-                os.rename(old_path, new_path)
-                # shutil.(old_path, new_path)
-            except FileNotFoundError:
-                print(f"File '{old_path}' not found.")
-            except PermissionError:
-                print(f"You don't have permission to rename the file.")
-            except Exception as e:
-                print(f"An error occurred: {e}")
+    # 2024-01-02 修改
+    for config_file in tools.tools.list_all_files(config_output_path):
+        config_file_name = config_file.split('\\')[-1][:-4]
+
+        old_path = os.path.join(shrink_item_path, 'classes.dex')
+        new_path = os.path.join(shrink_item_path, config_file_name[:-10] + '.dex')
+        # 当前dex已经shrink，跳过即可
+        if os.path.exists(new_path):
+            logger.debug('已经完成过shrink,无需再次shrink {}'.format(new_path))
+            continue
+        try:
+            cmd = 'java -jar  %s ' \
+                  '--release ' \
+                  '--no-minification ' \
+                  '--output %s ' \
+                  '--pg-conf %s ' \
+                  '--lib E:\\android\\sdk\\platforms\\android-33\\android.jar ' \
+                  '--lib E:\\JDK8 %s' \
+                  % ('../../../libs/r8-3.2.74.jar', shrink_item_path, config_file, input_library_path)
+            os.system(cmd)
+        except Exception:
+            print("Android R8 Error")
+            # 发生异常 跳过
+            continue
+        # 重命名
+        try:
+            # 2023-09-20 修改
+            os.rename(old_path, new_path)
+            # shutil.(old_path, new_path)
+        except FileNotFoundError:
+            print(f"File '{old_path}' not found.")
+        except PermissionError:
+            print(f"You don't have permission to rename the file.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
 
 def process_core_feature_set(shrink_dex_path):
@@ -508,8 +511,8 @@ if __name__ == '__main__':
         os.makedirs(base_rule_config_path)
 
     # todo:项目依赖文件
-    dep_file_path = r"F:\zc-data\RQ\RQ1\all-dependency.txt"
+    dep_file_path = r"F:\zc-data\RQ\RQ1\small-scale\com.appmindlab.nano_1315_src\dependency.txt"
     # todo: shrink-dex输出文件夹
-    shrink_dex_output_path = r'F:\zc-data\RQ\RQ1\shrink-dex-output'
+    shrink_dex_output_path = r'F:\zc-data\RQ\RQ1\small-scale\shrink-dex-output'
 
     pre_main(dep_file_path, shrink_dex_output_path)

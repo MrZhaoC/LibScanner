@@ -12,10 +12,10 @@ science-education
 sports-health 
 internet 
 connectivity 
-development *
-games
-graphics
-money
+development
+games 
+graphics 
+money *
 multimedia
 navigation
 phone-sms
@@ -26,7 +26,7 @@ theming
 writing
 """
 # 获取应用列表页面
-app_list_url = f'{base_url}/categories/development/'
+app_list_url = f'{base_url}/categories/money/'
 app_list_page = requests.get(app_list_url)
 soup = BeautifulSoup(app_list_page.content, 'html.parser')
 

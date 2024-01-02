@@ -104,7 +104,7 @@ if __name__ == '__main__':
     #         f.write(item + '\n')
 
     mvn_result, google_mvn_result = construct_complete_link_download()
-    with open(r'F:\zc-data\RQ\RQ2\all-dependency.txt') as f:
+    with open(r'F:\zc-data\RQ\RQ2\all-dependency.txt', 'w') as f:
         for item in mvn_result:
             f.write(item + '\n')
         for item in google_mvn_result:
