@@ -96,3 +96,10 @@ def update(sql):
         conn.close()
     except Exception as e:
         print("update 错误信息：" + str(e))
+
+
+if __name__ == '__main__':
+    sql = 'select group_id, artifact_id, version from google_maven_infos'
+    result = fetchall(sql)
+    for item in result:
+        print(item)

@@ -14,6 +14,7 @@ import logging
 import os
 import time
 import warnings
+import xml.etree.ElementTree as ET
 import zipfile
 from typing import List
 
@@ -63,8 +64,10 @@ def read_dependency_file(dependency_file_path):
 
 
 def query_current_dependency_from_mvn(gav: List[str]):
-    mvn_dependency = get_front_dependencies_from_mvn_by_gav(gav[0], gav[1], gav[2])
     mvn_dependency_result = []
+    if len(gav) < 3:
+        return mvn_dependency_result
+    mvn_dependency = get_front_dependencies_from_mvn_by_gav(gav[0], gav[1], gav[2])
     for md in mvn_dependency:
         g = md['group_id']
         a = md['artifact_id']
@@ -74,8 +77,10 @@ def query_current_dependency_from_mvn(gav: List[str]):
 
 
 def query_current_dependency_from_google_mvn(gav: List[str]):
-    google_mvn_dependency = get_front_dependencies_from_google_by_gav(gav[0], gav[1], gav[2])
     google_mvn_dependency_result = []
+    if len(gav) < 3:
+        return google_mvn_dependency_result
+    google_mvn_dependency = get_front_dependencies_from_google_by_gav(gav[0], gav[1], gav[2])
     for gmd in google_mvn_dependency:
         g = gmd['group_id']
         a = gmd['artifact_id']
@@ -84,13 +89,13 @@ def query_current_dependency_from_google_mvn(gav: List[str]):
     return google_mvn_dependency_result
 
 
-def download_dependency(gav: List[str]):
+def download_dependency(gav: List[str], google_mvn_dependency_list, mvn_dependency_list):
     downloaded_tpl = []
     # 当前tpl直接下载 ext可以删除
     download_tpl(gav, downloaded_tpl)
     # 处理依赖
-    google_mvn_dependency_list = query_current_dependency_from_google_mvn(gav)
-    mvn_dependency_list = query_current_dependency_from_mvn(gav)
+    # google_mvn_dependency_list = query_current_dependency_from_google_mvn(gav)
+    # mvn_dependency_list = query_current_dependency_from_mvn(gav)
     for google_mvn_dependency in google_mvn_dependency_list:
         download_tpl(google_mvn_dependency, downloaded_tpl)
     for mvn_dependency in mvn_dependency_list:
@@ -99,6 +104,9 @@ def download_dependency(gav: List[str]):
 
 
 def download_tpl(gav: List[str], downloaded_tpl: List[str]):
+    if len(gav) < 3:
+        return
+
     group_id = gav[0]
     artifact_id = gav[1]
     version = gav[2]
@@ -451,12 +459,23 @@ def save_core_feature_to_db(dex_folder_name, cluster_num, cluster_result):
 def pre_main(dependency_file_path, shrink_dex_path):
     dependency_list = read_dependency_file(dependency_file_path)
 
+    # 这里处理排序
+    two_kind_dependency_list = []
     for tpl_name in dependency_list:
+        gav = format_tpl_name(tpl_name)
+        google_mvn_dependency_list = query_current_dependency_from_google_mvn(gav)
+        mvn_dependency_list = query_current_dependency_from_mvn(gav)
+        two_kind_dependency_list.append([tpl_name, google_mvn_dependency_list, mvn_dependency_list])
+
+    # 排序
+    sorted_two_kind_dependency_list = sorted(two_kind_dependency_list, key=lambda x: len(x[2]))
+
+    for tpl_name, gmdl, mdl in sorted_two_kind_dependency_list:
         gav = format_tpl_name(tpl_name)
 
         # downloaded_tpl[0] 为 target_tpl
         # 得到所有 已经下载过的 和 当前下载完成的 gav_file路径集合
-        downloaded_tpl = download_dependency(gav)
+        downloaded_tpl = download_dependency(gav, gmdl, mdl)
 
         if len(downloaded_tpl) == 0:
             continue
@@ -478,17 +497,49 @@ def pre_main(dependency_file_path, shrink_dex_path):
         target_dex_name = converted_android_dex[0].split('\\')[-1][:-4]
         format_dex_name = tpl_name.replace(':', '@')
         if format_dex_name == target_dex_name:
+            input_library_path = downloaded_tpl[0]
             # todo:
-            # todo:
+            default_config = []
+            try:
+                with zipfile.ZipFile(input_library_path, 'r') as zip_ref:
+                    for zip_file_name in zip_ref.namelist():
+                        # todo: 解析proguard.txt文件内容生成规则
+                        if zip_file_name == 'proguard.txt':
+                            with zip_ref.open(zip_file_name) as f:
+                                for line in f.readlines():
+                                    default_config.append(str(line, encoding='utf-8'))
+                        # todo: 解析AndroidManifest.xml文件内容生成规则
+                        if zip_file_name == 'AndroidManifest.xml':
+                            with zip_ref.open(zip_file_name) as f:
+                                content = f.read().decode('utf-8')
+                                root = ET.fromstring(content)
+                                # 暂时没有用到，配合 .开头类使用
+                                package_name = root.attrib['package']
+                                class_name_rules = set()
+                                for child in root.iter('provider'):
+                                    class_name_rules.add('-keep class ' + child.attrib[
+                                        '{http://schemas.android.com/apk/res/android}name'] + ' { <init>(); }')
+                                for child in root.iter('service'):
+                                    class_name_rules.add('-keep class ' + child.attrib[
+                                        '{http://schemas.android.com/apk/res/android}name'] + ' { <init>(); }')
+                                for child in root.iter('receiver'):
+                                    class_name_rules.add('-keep class ' + child.attrib[
+                                        '{http://schemas.android.com/apk/res/android}name'] + ' { <init>(); }')
+                                for child in root.iter('activity'):
+                                    class_name_rules.add('-keep class ' + child.attrib[
+                                        '{http://schemas.android.com/apk/res/android}name'] + ' { <init>(); }')
+                                default_config.extend(list(class_name_rules))
+            except:
+                pass
             # todo: 添加默认的配置文件内容，默认配置文件的位置后续可能需要修改
             base_rule_path = r"D:\Android-exp\exp-example\base.cfg"
             with open(base_rule_path, 'r', encoding='utf-8') as f:
-                default_config = f.readlines()
+                default_config.extend(f.readlines())
 
             # 生成r8配置文件
             config_output_path = analysis_method_entry_from_dependency(format_dex_name, converted_android_dex[0],
                                                                        converted_android_dex, default_config)
-            input_library_path = downloaded_tpl[0]
+
             shrink_item_path = os.path.join(shrink_dex_path, format_dex_name)
 
             generate_shrink_android_dex(input_library_path, config_output_path, shrink_item_path)

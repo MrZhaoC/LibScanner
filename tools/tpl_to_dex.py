@@ -78,7 +78,7 @@ def jar_to_dex(jar_file, output_path, aar_flag):
               r"--lib E:\android\sdk\platforms\android-33\android.jar".format(jar_file, output_path)
         os.system(cmd)
 
-        # aar生成的jar使用完删除
+        # aar生成的jar使用完删除·
         if aar_flag:
             try:
                 os.remove(jar_file)

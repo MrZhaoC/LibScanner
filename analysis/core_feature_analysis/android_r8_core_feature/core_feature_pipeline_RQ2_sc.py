@@ -30,7 +30,7 @@ from database.utils.denpendency_business_utils import get_front_dependencies_fro
 
 public_library_path = r'D:\Android-exp\public-library'
 public_dex_path = r'D:\Android-exp\public-dex'
-base_rule_config_path = r'F:\zc-data\RQ\RQ1\r8-config'
+base_rule_config_path = r'F:\zc-data\RQ\RQ2\small-scale\r8-config'
 
 # 日志相关配置
 TEST_FORMAT = '%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s:%(lineno)d - %(message)s'
@@ -297,6 +297,7 @@ def analysis_method_entry_from_dependency(format_dex_name, target_dex_path, conv
     if not os.path.exists(config_output_path):
         os.makedirs(config_output_path)
     # else:
+
     # 2024-01-02修改
     for i, file in enumerate(converted_android_dex):
         if i == 0:
@@ -343,6 +344,7 @@ def generate_shrink_android_dex(input_library_path, config_output_path, shrink_i
     if not os.path.exists(shrink_item_path):
         os.makedirs(shrink_item_path)
     # else:
+
     # 2024-01-02 修改
     for config_file in tools.tools.list_all_files(config_output_path):
         config_file_name = config_file.split('\\')[-1][:-4]
@@ -527,7 +529,7 @@ def pre_main(dependency_file_path, shrink_dex_path):
             logger.critical('tpl:{} dex:{} config:{} shrink:{}'.format(len(downloaded_tpl), len(converted_android_dex),
                                                                        len(os.listdir(config_output_path)),
                                                                        len(os.listdir(shrink_item_path)))) \
-                # todo 2: 收缩的dex选择阈值划分存储特征数据库
+    # todo 2: 收缩的dex选择阈值划分存储特征数据库
     # 到此处，经过shrink的dex已经全部完成，准备构建核心特征
     # 此函数包含 核心特征划分 和 存取数据库
     # process_core_feature_set(shrink_dex_path)
@@ -542,8 +544,8 @@ if __name__ == '__main__':
         os.makedirs(base_rule_config_path)
 
     # todo:项目依赖文件
-    dep_file_path = r"F:\zc-data\RQ\RQ1\all-dependency.txt"
+    dep_file_path = r"F:\zc-data\RQ\RQ2\small-scale\all-dependency.txt"
     # todo: shrink-dex输出文件夹
-    shrink_dex_output_path = r'F:\zc-data\RQ\RQ1\shrink-dex-output'
+    shrink_dex_output_path = r'F:\zc-data\RQ\RQ2\small-scale\shrink-dex-output'
 
     pre_main(dep_file_path, shrink_dex_output_path)

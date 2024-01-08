@@ -1,36 +1,53 @@
 import os
 
-source_path = r'E:\fdroid_downloads\apks-source'
+from tools.tools import list_all_files
+
+source_path = r'F:\zc-data\apk-source\new-download-source\apks-source'
 
 
 def decompress_dir(path):
-    build_gradle = []
+    src_count = 0
+    minify_enabled_true = []
     dontobfuscate = []
     dontoptimize = []
     dontshrink = []
-    src_count = 0
+    minify_enabled = []
     for file in os.listdir(path):
+
         if file.endswith('_src'):
             src_count += 1
             file_path = os.path.join(path, file)
-            for root, folders, f in os.walk(file_path):
-                flag = False
-                for fi in f:
-                    if 'build.gradle' == fi or 'build.gradle.kts' == fi:
-                        bg = os.path.join(root, fi)
-                        with open(bg, 'r') as c:
+            # for root, folders, f in os.walk(file_path):
+            try:
+                for f_path in list_all_files(file_path):
+                    flag = False
+                    # todo: build.gradle ==> minifyEnabled true
+                    if f_path.endswith('build.gradle'):
+                        with open(f_path, 'r') as c:
                             for line in c.readlines():
-                                # print(line)
-                                if line.strip() == 'minifyEnabled true':
+                                # if line.strip() == 'minifyEnabled true':
+                                if 'minifyEnabled' in line.strip():
+                                    minify_enabled.append(file)
+                                if 'minifyEnabled' in line.strip() and 'true' in line.strip():
                                     flag = True
-                                    # print(bg)
-                                    build_gradle.append(file)
+                                    minify_enabled_true.append(file)
                                     break
-                    if flag and 'proguard-android-optimize.txt' == fi:
-                        print(file)
-                    if flag and 'proguard-rules.pro' == fi:
-                        pp = os.path.join(root, fi)
-                        with open(pp, 'r') as c:
+
+                    # todo: build.gradle.kts ==> isMinifyEnabled = true
+                    if f_path.endswith('build.gradle.kts'):
+                        with open(f_path, 'r') as c:
+                            for line in c.readlines():
+                                # if line.strip() == 'minifyEnabled true':
+                                if 'isMinifyEnabled' in line.strip():
+                                    minify_enabled.append(file)
+                                if 'isMinifyEnabled' in line.strip() and 'true' in line.strip():
+                                    flag = True
+                                    minify_enabled_true.append(file)
+                                    break
+
+                    # todo: -dontobfuscate -dontoptimize -dontshrink
+                    if f_path.endswith('-rules.pro') and flag:
+                        with open(f_path, 'r') as c:
                             for line in c.readlines():
                                 # print(line)
                                 if line.strip() == '-dontobfuscate':
@@ -40,9 +57,14 @@ def decompress_dir(path):
                                 elif line.strip() == '-dontshrink':
                                     dontshrink.append(file)
 
+                    if flag:
+                        break
+            except:
+                print('异常', file_path)
+
     print(src_count)
-    print(len(build_gradle))
-    print(len(set(build_gradle)))
+    print(len(minify_enabled))
+    print(len(minify_enabled_true))
 
     print()
 

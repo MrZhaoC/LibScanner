@@ -14,6 +14,7 @@ import logging
 import os
 import time
 import warnings
+import xml.etree.ElementTree as ET
 import zipfile
 from typing import List
 
@@ -476,17 +477,49 @@ def pre_main(dependency_file_path, shrink_dex_path):
         target_dex_name = converted_android_dex[0].split('\\')[-1][:-4]
         format_dex_name = tpl_name.replace(':', '@')
         if format_dex_name == target_dex_name:
+            input_library_path = downloaded_tpl[0]
             # todo:
-            # todo:
+            default_config = []
+            try:
+                with zipfile.ZipFile(input_library_path, 'r') as zip_ref:
+                    for zip_file_name in zip_ref.namelist():
+                        # todo: 解析proguard.txt文件内容生成规则
+                        if zip_file_name == 'proguard.txt':
+                            with zip_ref.open(zip_file_name) as f:
+                                for line in f.readlines():
+                                    default_config.append(str(line, encoding='utf-8'))
+                        # todo: 解析AndroidManifest.xml文件内容生成规则
+                        if zip_file_name == 'AndroidManifest.xml':
+                            with zip_ref.open(zip_file_name) as f:
+                                content = f.read().decode('utf-8')
+                                root = ET.fromstring(content)
+                                # 暂时没有用到，配合 .开头类使用
+                                package_name = root.attrib['package']
+                                class_name_rules = set()
+                                for child in root.iter('provider'):
+                                    class_name_rules.add('-keep class ' + child.attrib[
+                                        '{http://schemas.android.com/apk/res/android}name'] + ' { <init>(); }')
+                                for child in root.iter('service'):
+                                    class_name_rules.add('-keep class ' + child.attrib[
+                                        '{http://schemas.android.com/apk/res/android}name'] + ' { <init>(); }')
+                                for child in root.iter('receiver'):
+                                    class_name_rules.add('-keep class ' + child.attrib[
+                                        '{http://schemas.android.com/apk/res/android}name'] + ' { <init>(); }')
+                                for child in root.iter('activity'):
+                                    class_name_rules.add('-keep class ' + child.attrib[
+                                        '{http://schemas.android.com/apk/res/android}name'] + ' { <init>(); }')
+                                default_config.extend(list(class_name_rules))
+            except:
+                pass
             # todo: 添加默认的配置文件内容，默认配置文件的位置后续可能需要修改
             base_rule_path = r"D:\Android-exp\exp-example\base.cfg"
             with open(base_rule_path, 'r', encoding='utf-8') as f:
-                default_config = f.readlines()
+                default_config.extend(f.readlines())
 
             # 生成r8配置文件
             config_output_path = analysis_method_entry_from_dependency(format_dex_name, converted_android_dex[0],
                                                                        converted_android_dex, default_config)
-            input_library_path = downloaded_tpl[0]
+
             shrink_item_path = os.path.join(shrink_dex_path, format_dex_name)
 
             generate_shrink_android_dex(input_library_path, config_output_path, shrink_item_path)

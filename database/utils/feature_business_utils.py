@@ -1,8 +1,8 @@
 from database.utils import database_utils_pool_1
 
-TABLE_NAME = 'mvn_tpl_feature'
+# TABLE_NAME = 'mvn_tpl_feature'
 # TABLE_NAME = 'haircomb_all_dependency'
-# TABLE_NAME = 'faketraveler'
+TABLE_NAME = 'appmindlab'
 
 
 def get_all_tpl_feature():

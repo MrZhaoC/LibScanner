@@ -9,7 +9,7 @@ from database.utils import feature_business_utils
 # dex_path = r'F:\maven-data\haircomb\format_jar\nnnDex'
 # dex_path = r'D:\Android-exp\exp-example\apk-haircomb\shrink-dex'
 
-dex_path = r'D:\Android-exp\public-dex'
+dex_path = r'F:\zc-data\RQ\RQ1\small-scale\dex'
 
 
 def get_all_feature():

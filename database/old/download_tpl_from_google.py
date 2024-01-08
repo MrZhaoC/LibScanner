@@ -13,7 +13,7 @@ headers = {
 
 def group_id_master_index():
     groupIds = []
-    master_index_path = r'H:\maven-data\google\master-index.xml'
+    master_index_path = r"F:\maven-data\google\master-index.xml"
 
     tree = ET.parse(master_index_path)
     root = tree.getroot()
@@ -26,6 +26,7 @@ def group_id_master_index():
 def artifact_id_version_index():
     gaId_versions = []
     groupIds = group_id_master_index()
+    # groupIds = ['androidx.arch.core', 'androidx.compose.ui']
     artifactId_version_url = r'https://maven.google.com/{}/group-index.xml?hl=zh-cn'
     for groupId in groupIds:
         aid_version_url = artifactId_version_url.format(groupId.replace('.', '/'))
@@ -45,15 +46,26 @@ def artifact_id_version_index():
 def process_pom_file():
     pom_urls = []
     gaId_versions = artifact_id_version_index()
+    # 添加判断数据库
+    sql = 'select group_id, artifact_id, version from google_maven_infos'
+    google_maven_result = database_utils_pool.fetchall(sql)
+    google_maven_result_format = []
+    for item in google_maven_result:
+        db_gav = '{}:{}:{}'.format(item['group_id'], item['artifact_id'], item['version'])
+        google_maven_result_format.append(db_gav)
+
     base_url = r'https://maven.google.com/{}/{}/{}/{}-{}.pom?hl=zh-cn'
     for gav in gaId_versions:
-        gav = gav.split(':')
-        gid = gav[0]
-        aid = gav[1]
-        version = gav[2]
-        pom_url = base_url.format(gid.replace('.', '/'), aid, version, aid, version)
-        print(pom_url)
-        pom_urls.append(pom_url)
+        if gav not in google_maven_result_format:
+            gav = gav.split(':')
+            gid = gav[0]
+            aid = gav[1]
+            version = gav[2]
+            pom_url = base_url.format(gid.replace('.', '/'), aid, version, aid, version)
+            print(pom_url)
+            pom_urls.append(pom_url)
+        else:
+            print('%s 数据库中已经存在' % gav)
     return pom_urls
 
 
@@ -106,6 +118,8 @@ def pom_dependencies():
                     dependency_group_id = dependency.groupId.text
                     dependency_artifact_id = dependency.artifactId.text
                     dependency_version = dependency.version.text
+                    if '$' in dependency_group_id or '$' in dependency_artifact_id or '$' in dependency_version:
+                        continue
                     dependency_scope = None
                     if dependency.scope:
                         dependency_scope = dependency.scope.text
@@ -154,3 +168,4 @@ def save_to_database():
 
 if __name__ == '__main__':
     save_to_database()
+    # process_pom_file()

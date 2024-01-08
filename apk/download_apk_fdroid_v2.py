@@ -15,18 +15,18 @@ connectivity
 development
 games 
 graphics 
-money *
-multimedia
-navigation
-phone-sms
-reading
-security
-system
-theming
-writing
+money 
+multimedia 
+navigation 
+phone-sms 
+reading 
+security 
+system 
+theming 
+writing *
 """
 # 获取应用列表页面
-app_list_url = f'{base_url}/categories/money/'
+app_list_url = f'{base_url}/categories/writing/'
 app_list_page = requests.get(app_list_url)
 soup = BeautifulSoup(app_list_page.content, 'html.parser')
 

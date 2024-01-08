@@ -7,7 +7,7 @@ import requests
 mvn_base_link = r'https://repo1.maven.org/maven2/'
 google_mvn_link = r'https://maven.google.com/'
 
-apk_dependency_set_path = r'F:\zc-data\RQ\RQ1\apks'
+apk_dependency_set_path = r'F:\zc-data\RQ\RQ2\small-scale'
 
 
 def read_dependency_file(read_result):
@@ -49,22 +49,22 @@ def construct_complete_link_download():
         artifact_id = gav[1]
 
         # google-mvn
-        aid_version_url = artifactId_version_url.format(group_id.replace('.', '/'))
-        try:
-            group_index_xml_response = requests.get(aid_version_url)
-            time.sleep(0.5)
-            if group_index_xml_response.status_code == 200:
-                root = ET.fromstring(group_index_xml_response.content)
-                for child in root:
-                    if artifact_id == child.tag:
-                        versions = child.attrib['versions']
-                        all_version = versions.split(',')
-                        for v in all_version:
-                            gav = '{}:{}:{}'.format(group_id, child.tag, v)
-                            print('google-mvn--', gav)
-                            google_mvn_gav_list.append(gav)
-        except:
-            time.sleep(3)
+        # aid_version_url = artifactId_version_url.format(group_id.replace('.', '/'))
+        # try:
+        #     group_index_xml_response = requests.get(aid_version_url)
+        #     time.sleep(0.5)
+        #     if group_index_xml_response.status_code == 200:
+        #         root = ET.fromstring(group_index_xml_response.content)
+        #         for child in root:
+        #             if artifact_id == child.tag:
+        #                 versions = child.attrib['versions']
+        #                 all_version = versions.split(',')
+        #                 for v in all_version:
+        #                     gav = '{}:{}:{}'.format(group_id, child.tag, v)
+        #                     print('google-mvn--', gav)
+        #                     google_mvn_gav_list.append(gav)
+        # except:
+        #     time.sleep(3)
 
         # mvn
         detail_link = tpl_detail_link.format(group_id.replace('.', '/'), artifact_id)
@@ -85,8 +85,13 @@ def construct_complete_link_download():
 
 def read_multi_dependency_file():
     apk_dependency_folders = os.listdir(apk_dependency_set_path)
+
     read_result = []
     for apk_dependency_folder in apk_dependency_folders:
+
+        if os.path.isfile(os.path.join(apk_dependency_set_path, apk_dependency_folder)):
+            continue
+
         apk_dependency_file_path = os.path.join(os.path.join(apk_dependency_set_path, apk_dependency_folder),
                                                 'dependency.txt')
         # print(apk_dependency_file_path)
@@ -98,13 +103,13 @@ def read_multi_dependency_file():
 
 if __name__ == '__main__':
     # result = read_multi_dependency_file()
-    all_dependency_path = r'F:\zc-data\RQ\RQ1\all-dependency.txt'
+    # all_dependency_path = r'F:\zc-data\RQ\RQ1\all-dependency.txt'
     # with open(all_dependency_path, 'w') as f:
     #     for item in result:
     #         f.write(item + '\n')
 
     mvn_result, google_mvn_result = construct_complete_link_download()
-    with open(r'F:\zc-data\RQ\RQ2\all-dependency.txt', 'w') as f:
+    with open(r"F:\zc-data\RQ\RQ2\small-scale\all-dependency.txt", 'w') as f:
         for item in mvn_result:
             f.write(item + '\n')
         for item in google_mvn_result:

@@ -13,7 +13,7 @@ from analysis.core_feature_analysis.android_r8_core_feature.old.core_feature_clu
 from database.utils import feature_business_utils
 
 # apk_path = r'D:\Android-exp\exp-example\faketraveler\apk\app-release-unsigned-shrink.apk'
-apk_path = r'D:\Android-exp\exp-example\haircomb\apk\app-release-unsigned-shrink.apk'
+apk_path = r"F:\zc-data\RQ\RQ1\small-scale\com.appmindlab.nano_1315_src\app-release-unsigned-shrink.apk"
 apk_class_names = []
 excel_data = []
 

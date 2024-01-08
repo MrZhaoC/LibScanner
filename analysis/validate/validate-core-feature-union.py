@@ -9,8 +9,8 @@ from database.utils import feature_business_utils
 from tools import tools
 from tools.tools import write_excel_xlsx
 
-dex_dir_path = r'D:\Android-exp\exp-example\apk-haircomb\shrink-dex'
-android_apk_path = r'D:\Android-exp\exp-example\haircomb\apk\app-release-unsigned-shrink.apk'
+dex_dir_path = r'F:\zc-data\RQ\RQ1\small-scale\shrink-dex-output1'
+android_apk_path = r"F:\zc-data\RQ\RQ1\small-scale\com.appmindlab.nano_1315_src\app-release-unsigned-shrink.apk"
 class_names = []
 candidate_class_list = []
 candidate_method_list = []
@@ -345,10 +345,10 @@ def generate_feature_and_compare(dex_path):
                     if dex_method.full_name in apk_method_names:
                         dex_method_names.append(dex_method.full_name)
             # 适用于多个dex情况，核心特征划分时构建的dex
-            # dex_core_method_union = get_current_dex_core_method_union(file_name)
+            dex_core_method_union = get_current_dex_core_method_union(file_name)
 
             # 适用于核心特征并集时构建的dex
-            dex_core_method_union = get_core_method_in_curr_dex(file_name)
+            # dex_core_method_union = get_core_method_in_curr_dex(file_name)
 
             result = []
             for dex_method_full_name in dex_method_names:
