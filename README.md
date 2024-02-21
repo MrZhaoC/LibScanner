@@ -10,7 +10,7 @@
 
 第三方库(TPL)已经成为Android生态系统的重要组成部分。开发者可以使用各种第三方库来促进他们的应用开发。第三方库是一把双刃剑。一方面，它可以简化移动应用程序的开发。另一方面，它也带来了安全风险，比如识别恶意软件和重新打包的应用程序以及第三方库中存在的某些漏洞，进而导致用户隐私泄露或增加攻击面(如引入过度特权权限)的移动应用程序。
 
-<img src="images/image-20240130115447391.png" alt="image-20240218193750714" style="zoom: 67%;" />
+<img src="\images\image-20240218193750714.png" alt="image-20240218193750714" style="zoom: 67%;" />
 
 Android应用中，第三方库和应用程序代码都被打包进入APK中，模糊了应用程序代码和库代码之间的关系，并且使用了各种各样的混淆策略，当使用 Android Gradle 插件 3.4.0或更高版本构建项目时，默认使用r8作为项目的混淆工具。根据对所有主流Android应用第三方库检测工具的检测能力分析，所有工具都不能有效处理由于使用混淆工具（proguard、r8）开启死代码移除所带来的影响，在这种情况下，需要一种精确可靠的库检测器。
 
@@ -23,11 +23,11 @@ Android应用中，第三方库和应用程序代码都被打包进入APK中，�
 
 您可以通过**git**使用以下命令克隆项目到本地：
 
-http_url:    `git clone https://git.openi.org.cn/watchman/Watchman-tool.git` （待修改）
+http_url:    `git clone https://github.com/MrZhaoC/LibScanner.git`
 
    
 
-ssh_url:    `git clone git@git.openi.org.cn:watchman/Watchman-tool.git` （待修改）
+ssh_url:    `git clone git@github.com:MrZhaoC/LibScanner.git`
 
 ## 环境配置
 
@@ -49,7 +49,7 @@ ssh_url:    `git clone git@git.openi.org.cn:watchman/Watchman-tool.git` （待�
 
 LibScanner可以检测和识别Android应用中的TPL和具体的版本，检测流程主要分为**4个部分**，首先是**预处理**，反编译APK项目并且删除开发者编写的代码；第二部分是**模块解耦**，根据类依赖关系对APK中的第三方库进行解耦，相比最新Android应用TPL检测工具，这部分我们添加了类之间的注解关系作为补充；第三部分是**特征生成**，主要分为完全特征和核心特征两部分，完全特征是根据TPL代码进行的全量构建以应对没有被死代码移除的TPL，核心特征是TPL中被其他TPL真正调用的那部分代码，用于用对死代码移除导致部分特征确实的情况；最后一部分是**库信息识别**，根据特征匹配算法检测出Android应用中的TPL，其技术架构如下：
 
-<img src="C:\Users\赵超\AppData\Roaming\Typora\typora-user-images\image-20240130115606388.png" alt="image-20240130115606388" style="zoom:67%;" />
+<img src="images\image-20240130115606388.png" alt="image-20240130115606388" style="zoom:67%;" />
 
 
 
@@ -75,13 +75,13 @@ LibScanner在这个部分的主要任务是排除开发者编写的代码模块�
 
 特征数据库表的主要字段如下：TPL的group_id、artifact_id、version、package_name等基本信息，另外就是TPL特征相关信息：完全特征包括TPL特征、粗粒度特征、细粒度特征；核心特征是根据细粒度方式构建的。
 
-![image-20240218194016101](C:\Users\赵超\AppData\Roaming\Typora\typora-user-images\image-20240218194016101.png)
+![image-20240218194016101](images\image-20240218194016101.png)
 
 ### 完全特征构建
 
 针对每个TPL构建全部代码的特征存储在特征数据库中，根据特征粒度的不同分为TPL特征、粗粒度特征、细粒度特征。
 
-<img src="C:\Users\赵超\AppData\Roaming\Typora\typora-user-images\image-20240218195504463.png" alt="image-20240218195504463" style="zoom:50%;" />
+<img src="images\image-20240218195504463.png" alt="image-20240218195504463" style="zoom:50%;" />
 
 **特征构建**是从下到上的一个过程，首先是方法级的细粒度特征，然后是类级别的粗粒度特征，最后是TPL级别的特征。
 
@@ -101,11 +101,11 @@ LibScanner在这个部分的主要任务是排除开发者编写的代码模块�
 
 核心特征是根据TPL间依赖关系构建的，需要提前构建好TPL依赖网络，我们在本地构建了TPL依赖关系数据库，依赖的来源主要分为两个仓库，maven仓库和google-maven仓库。
 
-<img src="C:\Users\赵超\AppData\Roaming\Typora\typora-user-images\image-20240218193855256.png" alt="image-20240218193855256" style="zoom: 50%;" />
+<img src="images\image-20240218193855256.png" alt="image-20240218193855256" style="zoom: 50%;" />
 
 **TPL依赖关系构建核心特征集合**
 
-<img src="C:\Users\赵超\AppData\Roaming\Typora\typora-user-images\image-20240218164801449.png" alt="image-20240218164801449" style="zoom:50%;" />
+<img src="images\image-20240218164801449.png" alt="image-20240218164801449" style="zoom:50%;" />
 
 核心特征的构建是通过R8工具实现的。一个TPL可能会有多个下游依赖，需要对每一对下游依赖进行分析，主要分为3个步骤：分析A调用B的集合、生成保留规则写入proguard.cfg中、使用R8工具对B进行代码收缩。
 
@@ -136,7 +136,7 @@ LibScanner在这个部分的主要任务是排除开发者编写的代码模块�
 
 **核心特征集合划分**
 
-<img src="C:\Users\赵超\AppData\Roaming\Typora\typora-user-images\image-20240218164809782.png" alt="image-20240218164809782" style="zoom:60%;" />
+<img src="images\image-20240218164809782.png" alt="image-20240218164809782" style="zoom:60%;" />
 
 一个TPL可能有几个到数万个不等的下游依赖，那么通过TPL依赖关系构建的核心特征集合就会生成很多，如果将每个小特征集合存储在数据库中不仅会占用大量的存储空间而且会增加比较的时间。并且不同下游依赖产生的核心特征集合可能是一致的，这就需要通过一种方式对生成的核心特征集合进行合理的聚合，提高存储空间和比较时间的效率。
 
@@ -148,7 +148,7 @@ LibScanner在这个部分的主要任务是排除开发者编写的代码模块�
 
 对于给定APK，根据上述描述操作，根据流程一步步进行判断，当达到相似度阈值后停止，给出结果。
 
-<img src="C:\Users\赵超\AppData\Roaming\Typora\typora-user-images\image-20240218194225372.png" alt="image-20240218194225372" style="zoom:50%;" />
+<img src="images\image-20240218194225372.png" alt="image-20240218194225372" style="zoom:50%;" />
 
 
 
@@ -174,7 +174,7 @@ LibScanner在这个部分的主要任务是排除开发者编写的代码模块�
 
    项目APK链接：https://f-droid.org/repo/org.bitbucket.watashi564.combapp_4.apk
 
-   <img src="C:\Users\赵超\AppData\Roaming\Typora\typora-user-images\image-20240219142101202.png" alt="image-20240219142101202" style="zoom: 80%;" />
+   <img src="images\image-20240219142101202.png" alt="image-20240219142101202" style="zoom: 80%;" />
 
 2. 项目依赖树展示
 
