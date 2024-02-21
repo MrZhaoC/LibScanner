@@ -1,4 +1,5 @@
 import ast
+import json
 import re
 import threading
 import time
@@ -14,7 +15,7 @@ from database.utils import feature_business_utils
 from help.help_analysis_core_feature import validate_apk_shrink_method
 
 # apk_path = r'D:\Android-exp\exp-example\faketraveler\apk\app-release-unsigned-shrink.apk'
-apk_path = r'D:\Android-exp\exp-example\haircomb\apk\app-release-unsigned-shrink.apk'
+apk_path = r'D:\Android-exp\exp-example\haircomb\apk\app-release-unsigned.apk'
 apk_class_names = []
 excel_data = []
 
@@ -322,8 +323,10 @@ def compere_tpl_feature(apk_candidate_tpl_features):
         tpl_feature = db_tpl_item['tpl_feature']
         if tpl_feature in apk_candidate_tpl_features:
             print('%-80s %-20s  %s' % (tpl_name, 1.0, 'tpl_feature'))
+
             # 将数据加入excel_data，写入excel
-            excel_data.append([tpl_name, tpl_class_count, 1.0])
+            excel_data.append([tpl_name, 1.0, 'tpl_feature'])
+
             found_tpls.append(tpl_name)
     return found_tpls
 
@@ -353,8 +356,10 @@ def compere_course_feature(apk_candidate_course_feature_list, found_tpls, apk_ca
                     break  # 不再继续比较其他apk_candidate_course_features
             if max(course_feature_similarity_list) == 1.0:
                 print('%-80s %-20s  %s' % (tpl_name, 1.0, 'course_feature'))
+
                 # 将数据加入excel_data，写入excel
-                excel_data.append([tpl_name, tpl_class_count, 1.0])
+                excel_data.append([tpl_name, 1.0, 'course_feature'])
+
             elif max(course_feature_similarity_list) >= COURSE_FEATURE_THRESHOLD:
                 # pass
                 # print('%-80s %s  %s' % (tpl_name, max(course_feature_similarity_list), 'course_feature'))
@@ -406,14 +411,16 @@ def compare_single_fine_grained_feature(db_tpl_item, apk_candidate_feature_info)
     if tpl_similarity_comparison_list:
         if max(tpl_similarity_comparison_list) >= TPL_SIM_THRESHOLD:
             print('%-80s %-20s  %s' % (db_tpl_name, max(tpl_similarity_comparison_list), 'fine_grained_feature1'))
+
             # 将数据加入excel_data，写入excel
-            # excel_data.append([db_tpl_name, tpl_class_count, max(tpl_similarity_comparison_list)])
+            excel_data.append([db_tpl_name, max(tpl_similarity_comparison_list), 'fine_grained_feature'])
+
         else:
             # 比较核心特征
             compare_core_feature_and_cluster(db_tpl_item, apk_candidate_feature_info)
             # print('%-80s %-20s  %s' % (db_tpl_name, max(tpl_similarity_comparison_list), 'fine_grained_feature2'))
         # 将数据加入excel_data，写入excel
-        excel_data.append([db_tpl_name, db_tpl_class_count, max(tpl_similarity_comparison_list)])
+        # excel_data.append([db_tpl_name, db_tpl_class_count, max(tpl_similarity_comparison_list)])
     else:
         pass
 
@@ -465,6 +472,7 @@ def compare_core_feature_and_cluster(db_tpl_item, apk_candidate_feature_info):
     # 核心特征并集特征相似度达到阈值之后不再进行比较
     if sim >= TPL_SIM_THRESHOLD:
         print('%-80s %-20s  %s' % (db_tpl_name, sim, 'core_feature_union'))
+        excel_data.append([db_tpl_name, sim, 'core_feature_union'])
         return
 
     # 核心特征并集特征相似度到不到阈值，继续比较划分后的核心特征
@@ -475,6 +483,7 @@ def compare_core_feature_and_cluster(db_tpl_item, apk_candidate_feature_info):
         match_list.append(cls_sim)
     if match_list:
         print('%-80s %-20s  %s' % (db_tpl_name, max(match_list), 'core_feature_cluster'))
+        excel_data.append([db_tpl_name, max(match_list), 'core_feature_cluster'])
     else:
         print('%-80s %-20s  %s' % (db_tpl_name, 0, 'core_feature_cluster'))
 
@@ -665,7 +674,9 @@ def compare_core_feature_1():
 
         # 核心特征并集特征相似度达到阈值之后不再进行比较
         if sim >= TPL_SIM_THRESHOLD:
-            print('%-80s %-20s %-20s %-20s %s' % (db_tpl_name, sim, len(best_match_method_list), len(db_tpl_core_fine_grained_feature), 'core_feature_union'))
+            print('%-80s %-20s %-20s %-20s %s' % (
+                db_tpl_name, sim, len(best_match_method_list), len(db_tpl_core_fine_grained_feature),
+                'core_feature_union'))
             # break
             continue
 
@@ -710,3 +721,20 @@ if __name__ == '__main__':
     # path = r"D:\zc\第三方库检测实验数据\2023-09-07.xlsx"
     # if write_file_flag:
     #     write_excel_xlsx(path, "complete-compare", best_match_sim)
+
+    compare_result = {'apk_file_name': apk_path.split('\\')[-1], 'apk_package_name': str(a.get_package())}
+    libraries = []
+    for e in excel_data:
+        gav = e[0]
+        gav_list = gav.split(':')
+        library_item = {}
+        library_item['group_id'] = gav_list[0]
+        library_item['artifact_id'] = gav_list[1]
+        library_item['version'] = gav_list[2]
+        library_item['similarity'] = e[1]
+        library_item['feature_type'] = e[2]
+        libraries.append(library_item)
+    compare_result['libraries'] = libraries
+
+    print(json.dumps(compare_result, ensure_ascii=False))
+

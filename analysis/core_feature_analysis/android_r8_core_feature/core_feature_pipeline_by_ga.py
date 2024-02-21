@@ -25,8 +25,8 @@ from androguard.misc import get_default_session, AnalyzeDex
 
 import generate_feature
 import tools.tools
-from database.utils.denpendency_business_utils import get_front_dependencies_from_mvn_by_gav, \
-    get_front_dependencies_from_google_by_gav
+from database.utils.denpendency_business_utils import get_front_dependencies_from_mvn_by_ga, \
+    get_front_dependencies_from_google_by_ga
 
 public_library_path = r'E:\public-library'
 public_dex_path = r'F:\public-dex'
@@ -66,7 +66,7 @@ def query_current_dependency_from_mvn(gav: List[str]):
     mvn_dependency_result = []
     if len(gav) < 3:
         return mvn_dependency_result
-    mvn_dependency = get_front_dependencies_from_mvn_by_gav(gav[0], gav[1], gav[2])
+    mvn_dependency = get_front_dependencies_from_mvn_by_ga(gav[0], gav[1])
     for md in mvn_dependency:
         g = md['group_id']
         a = md['artifact_id']
@@ -79,7 +79,7 @@ def query_current_dependency_from_google_mvn(gav: List[str]):
     google_mvn_dependency_result = []
     if len(gav) < 3:
         return google_mvn_dependency_result
-    google_mvn_dependency = get_front_dependencies_from_google_by_gav(gav[0], gav[1], gav[2])
+    google_mvn_dependency = get_front_dependencies_from_google_by_ga(gav[0], gav[1])
     for gmd in google_mvn_dependency:
         g = gmd['group_id']
         a = gmd['artifact_id']
@@ -284,23 +284,6 @@ def jar_to_dex(jar_file_path, converted_android_dex, aar_flag):
         print(e)
 
 
-def get_call_methods(method_analysis, methods, result_set):
-    if method_analysis in result_set:
-        return
-    result_set.add(method_analysis)
-    # to
-    for _, callee_to, _ in method_analysis.get_xref_to():
-        next_method_analysis = callee_to
-        if next_method_analysis.full_name in methods:
-            get_call_methods(next_method_analysis, methods, result_set)
-    # from
-    # for _, callee_from, _ in method_analysis.get_xref_from():
-    #     next_method_analysis = callee_from
-    #     if next_method_analysis.full_name in methods:
-    #         # print(next_method_analysis.full_name)
-    #         get_all_methods(next_method_analysis, methods)
-
-
 def analysis_method_entry_from_dependency(format_dex_name, target_dex_path, converted_android_dex, default_config,
                                           default_rule_config_path):
     """
@@ -310,13 +293,10 @@ def analysis_method_entry_from_dependency(format_dex_name, target_dex_path, conv
     _, target_dvm, target_dx = AnalyzeDex(target_dex_path)
 
     target_method_full_name_list = []
-    target_field_list = []
 
     # 得到目标dex的所有方法名(全限定类名+方法信息)集合
     for method in target_dvm.get_methods():
         target_method_full_name_list.append(method.full_name)
-    for field in target_dvm.get_fields():
-        target_field_list.append((field.name, field.proto))
 
     # config_output_path = 配置文件输出路径 + 每个dex的名称
     config_output_path = os.path.join(default_rule_config_path, format_dex_name)
@@ -343,50 +323,15 @@ def analysis_method_entry_from_dependency(format_dex_name, target_dex_path, conv
 
         # analysis method entry
         if file_ext == '.dex':
-            # todo: old
-            # method_entry_list = []
+            method_entry_list = []
             _, fd_dvm, fd_dx = AnalyzeDex(file)
-            # for class_x in fd_dx.get_classes():
-            #     for method_x in class_x.get_methods():
-            #         if method_x.full_name in target_method_full_name_list:
-            #             method_entry_list.append(method_x)
+            for class_x in fd_dx.get_classes():
+                for method_x in class_x.get_methods():
+                    if method_x.full_name in target_method_full_name_list:
+                        method_entry_list.append(method_x)
 
-            # todo: new
-            # 得到所有调用方法的集合
-            called_method_list = set()
-            called_field_list = set()
-            for method_x1 in fd_dx.get_methods():
-                for method_x2 in target_dx.get_methods():
-                    if method_x2.is_external():
-                        continue
-                    if method_x1.full_name == method_x2.full_name:
-                        get_call_methods(method_x2, target_method_full_name_list, called_method_list)
-                # 获取被外部tpl调用的字段
-                for cla_x, field, _ in method_x1.xrefread:
-                    if (field.name, field.proto) in target_field_list:
-                        called_field_list.add((field.name, field.proto))
-                for cla_x, field, _ in method_x1.xrefwrite:
-                    if (field.name, field.proto) in target_field_list:
-                        called_field_list.add((field.name, field.proto))
-
-            # todo: 待修改
-            for method_x in called_method_list:
-                for cla_x, field, _ in method_x.xrefread:
-                    called_field_list.add((field.name, field.proto))
-
-                for cla_x, field, _ in method_x.xrefwrite:
-                    called_field_list.add((field.name, field.proto))
-
-            for method_x in target_dx.get_methods():
-                for cla_x, field, _ in method_x.xrefread:
-                    if (field.name, field.proto) in called_field_list:
-                        called_method_list.add(method_x)
-                for cla_x, field, _ in method_x.xrefwrite:
-                    if (field.name, field.proto) in called_field_list:
-                        called_method_list.add(method_x)
-
-            if called_method_list:
-                format_method_keep_rules_temp = tools.tools.format_method_keep_rule(list(called_method_list))
+            if method_entry_list:
+                format_method_keep_rules_temp = tools.tools.format_method_keep_rule(method_entry_list)
 
                 # 生成的方法调用规则一致，不写入文件
                 format_method_keep_rules = sorted(format_method_keep_rules_temp)
@@ -396,7 +341,6 @@ def analysis_method_entry_from_dependency(format_dex_name, target_dex_path, conv
                         continue
                 else:
                     sorted_format_method_keep_rules = format_method_keep_rules
-
                 # 写入文件
                 with open(final_format_keep_rule_path, 'w', encoding='utf-8') as f:
                     for kr in format_method_keep_rules:
@@ -538,9 +482,9 @@ def pre_main(dependency_file_path, shrink_dex_path, default_rule_config_path):
         two_kind_dependency_list.append([tpl_name, google_mvn_dependency_list, mvn_dependency_list])
 
     # 排序
-    # sorted_two_kind_dependency_list = sorted(two_kind_dependency_list, key=lambda x: len(x[2]))
+    sorted_two_kind_dependency_list = sorted(two_kind_dependency_list, key=lambda x: len(x[2]))
 
-    for tpl_name, gmdl, mdl in two_kind_dependency_list:
+    for tpl_name, gmdl, mdl in sorted_two_kind_dependency_list:
         gav = format_tpl_name(tpl_name)
 
         # downloaded_tpl[0] 为 target_tpl
@@ -622,17 +566,3 @@ def pre_main(dependency_file_path, shrink_dex_path, default_rule_config_path):
     # 到此处，经过shrink的dex已经全部完成，准备构建核心特征
     # 此函数包含 核心特征划分 和 存取数据库
     # process_core_feature_set(shrink_dex_path)
-
-# if __name__ == '__main__':
-#
-#     # todo:项目依赖文件
-#     dep_file_path = r"D:\Android-exp\exp-example\haircomb\haircomb_dependencies.txt"
-#     # todo: shrink-dex输出文件夹
-#     shrink_dex_output_path = r'D:\Android-exp\exp-example\haircomb\2024-01-11\shrink-dex-output'
-#     # todo: android config输出文件夹
-#     base_rule_config_path = r'D:\Android-exp\exp-example\haircomb\2024-01-11\r8-config'
-#
-#     if not os.path.exists(base_rule_config_path):
-#         os.makedirs(base_rule_config_path)
-#
-#     pre_main(dep_file_path, shrink_dex_output_path, base_rule_config_path)

@@ -9,6 +9,8 @@ class_names = []
 def get_class_names(a, d_list):
     apk_main_package = a.get_package().split('.')
     apk_main_activity = a.get_main_activity().split('.')  # ??? 返回结果以 .***开头
+    print(a.get_package())
+    print(a.get_main_activity())
 
     common_prefix = ''
     for i in range(min(len(apk_main_package), len(apk_main_activity))):

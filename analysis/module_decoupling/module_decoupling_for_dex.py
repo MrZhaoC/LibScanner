@@ -189,5 +189,5 @@ def get_connected_components(dex_file_path):
 
 
 if __name__ == '__main__':
-    dex_path = r''
+    dex_path = r"F:\zc-data\RQ\RQ1\apks\cl.coders.faketraveler_9_src\tpl\androidx.activity@activity@1.0.0.dex"
     all_connected_components = get_connected_components(dex_path)

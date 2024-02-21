@@ -16,8 +16,8 @@ warnings.filterwarnings("ignore")
                   D:\\Android-exp\\exp-example\\haircomb\\shrink-dex
 """
 
-dex_dir_path = r'D:\Android-exp\shrink-dex-output'
-
+# dex_dir_path = r'D:\Android-exp\shrink-dex-output'
+dex_dir_path = r'F:\zc-data\RQ\RQ1\shrink-dex-output'
 
 def get_current_dex_core_feature_clusters(dex_name):
     """
@@ -146,7 +146,7 @@ def cluster_sets(similarity_graph):
 
 
 def format_core_feature_clusters(sets):
-    threshold = 0.9
+    threshold = 0.7
     similarity_graph = build_similarity_graph(sets, threshold)
     clusters = cluster_sets(similarity_graph)
 

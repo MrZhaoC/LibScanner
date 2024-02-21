@@ -2,7 +2,8 @@ import os
 
 from tools.tools import list_all_files
 
-source_path = r'F:\zc-data\apk-source\new-download-source\apks-source'
+# source_path = r'F:\zc-data\apk-source\new-download-source\apks-source'
+source_path = r'F:\zc-data\apk-source\success'
 
 
 def decompress_dir(path):
@@ -73,5 +74,35 @@ def decompress_dir(path):
     print(len(set(dontshrink)))
 
 
+def application_call_external_code_analysis(path):
+    result = []
+    with open('./filter-dependency.txt', 'w') as fdf:
+        for file in os.listdir(path):
+            if file.endswith('_src'):
+                file_path = os.path.join(path, file)
+                # for root, folders, f in os.walk(file_path):
+                try:
+                    for f_path in list_all_files(file_path):
+                        # print(f_path)
+                        if f_path.endswith('.java') or f_path.endswith('.kt'):
+                            with open(f_path, 'r') as f:
+                                lines = f.readlines()
+                                for line in lines:
+                                    if line.startswith('import '):
+                                        # print(line.split(' ')[1])
+                                        class_name = line.split(' ')[1]
+                                        if class_name.startswith('java.') or class_name.startswith('android.') or '_' in class_name:
+                                            continue
+                                        format_class_name = 'L' + class_name.replace('.', '/')
+                                        result.append(format_class_name)
+                                        fdf.write(format_class_name)
+                                        print(format_class_name)
+
+                except:
+                    pass
+
+
 if __name__ == '__main__':
-    decompress_dir(source_path)
+    # decompress_dir(source_path)
+    # Lai/h2o/mojos/runtime/lic/InvalidWatermarkException;
+    application_call_external_code_analysis(source_path)

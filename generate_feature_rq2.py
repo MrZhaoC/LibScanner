@@ -6,22 +6,20 @@ from androguard.misc import AnalyzeDex, get_default_session
 
 from database.utils import feature_business_utils
 
-# dex_path = r'F:\maven-data\haircomb\format_jar\nnnDex'
-# dex_path = r'D:\Android-exp\exp-example\apk-haircomb\shrink-dex'
 
-dex_path = r'D:\Android-exp\public-dex'
+# dex_path = r'D:\Android-exp\public-dex'
 
 
-def get_all_feature():
+def get_all_feature(apk_name):
     db_library_names = []
-    features = feature_business_utils.get_all_tpl_feature()
+    features = feature_business_utils.get_tpl_features(apk_name)
     for item in features:
         db_library_names.append(item['tpl_name'])
     return db_library_names
 
 
-def process_dex_files(android_dex_path):
-    db_library_names = get_all_feature()
+def process_dex_files(apk_name, android_dex_path):
+    db_library_names = get_all_feature(apk_name)
     for root, folders, files in os.walk(android_dex_path):
         for file in files:
             if not file.endswith(".dex"):
@@ -34,14 +32,14 @@ def process_dex_files(android_dex_path):
                 continue
             _, dex_dvm, dex_dx = AnalyzeDex(dex_file)
             print(tpl_name)
-            generate_feature(dex_dvm, dex_dx, tpl_name)
+            generate_feature(apk_name, dex_dvm, dex_dx, tpl_name)
 
             # 清空session，减少内存占用
             session = get_default_session()
             session.reset()
 
 
-def generate_feature(d, dx, tpl_name):
+def generate_feature(apk_name, d, dx, tpl_name):
     class_names = []
     for cla_rel in d.get_classes():
         class_names.append(cla_rel.name)
@@ -52,8 +50,9 @@ def generate_feature(d, dx, tpl_name):
 
     tpl_feature, course_features = get_two_feature(all_cla_list)
     # database insert complete feature info
-    feature_business_utils.insert_complete_feature(tpl_name, cla_count, method_count, tpl_feature, course_features,
-                                                   fined_features)
+    feature_business_utils.insert_complete_feature_1(apk_name, tpl_name, cla_count, method_count, tpl_feature,
+                                                     course_features,
+                                                     fined_features)
     # feature_business_utils.update_complete_feature(tpl_name, method_count)
 
 
@@ -195,4 +194,25 @@ def get_two_feature(all_cla_list):
 
 
 if __name__ == '__main__':
-    process_dex_files(dex_path)
+    # process_dex_files(dex_path)
+
+    path = r'F:\zc-data\RQ\RQ2\apks'
+
+    """
+    turn参数说明:
+        0 : 根据APK依赖关系复制符合条件的shrink-dex-folder到APK文件夹下
+        1 : 根据APK依赖关系复制符合条件的未被代码收缩的dex到APK文件夹下
+        2 : 根据APK依赖关系复制符合条件的r8-config-folder到APK文件夹下
+        3 : 根据APK文件夹下r8-config生成对应的shrink-dex存储到指定文件夹
+    """
+
+    turn = 1
+
+    apk_folders = os.listdir(path)
+
+    for apk_folder in apk_folders:
+        apk_folder_path = os.path.join(path, apk_folder)
+        dex_path = os.path.join(apk_folder_path, 'tpl')
+        process_dex_files(apk_folder.replace('.', '_'), dex_path)
+
+        # feature_business_utils.truncate_table(apk_folder.replace('.', '_'))

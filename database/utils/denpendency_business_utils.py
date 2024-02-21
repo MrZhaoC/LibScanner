@@ -35,6 +35,28 @@ def get_front_dependencies_from_google_by_gav(group_id, artifact_id, version_num
     return dependencies
 
 
+# 根据ga查询下游依赖关系，考虑到gradle版本仲裁规则----maven
+def get_front_dependencies_from_mvn_by_ga(group_id, artifact_id):
+    st = time.perf_counter()
+    sql = "select group_id, artifact_id, version from maven_dependencies where d_group_id = '%s' and d_artifact_id = " \
+          "'%s'" % (group_id, artifact_id)
+    dependencies = database_utils_pool.fetchall(sql)
+    et = time.perf_counter()
+    print('mvn查询依赖关系共 %s 条, 用时 %s' % (len(dependencies), et - st))
+    return dependencies
+
+
+# 根据ga查询下游依赖关系，考虑到gradle版本仲裁规则----google-maven
+def get_front_dependencies_from_google_by_ga(group_id, artifact_id):
+    st = time.perf_counter()
+    sql = "SELECT group_id, artifact_id, version from google_maven_dependencies where d_group_id = '%s' and " \
+          "d_artifact_id = '%s'" % (group_id, artifact_id)
+    dependencies = database_utils_pool.fetchall(sql)
+    et = time.perf_counter()
+    print('google_mvn查询依赖关系共 %s 条, 用时 %s' % (len(dependencies), et - st))
+    return dependencies
+
+
 def get_front_dependencies_cnt_from_mvn_by_gav(group_id, artifact_id, version_num):
     sql = "select count(*) as dep_cnt from maven_dependencies where d_group_id = '%s' and d_artifact_id = " \
           "'%s' and d_version = '%s'" % (group_id, artifact_id, version_num)

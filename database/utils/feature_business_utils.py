@@ -2,11 +2,17 @@ from database.utils import database_utils_pool_1
 
 # TABLE_NAME = 'mvn_tpl_feature'
 # TABLE_NAME = 'haircomb_all_dependency'
-TABLE_NAME = 'appmindlab'
+TABLE_NAME = 'haircomb_apk_dependency'
 
 
 def get_all_tpl_feature():
     sql = 'SELECT * FROM %s' % TABLE_NAME
+    feature_info = database_utils_pool_1.fetchall(sql)
+    return feature_info
+
+
+def get_tpl_features(db_table_name):
+    sql = 'SELECT * FROM %s' % db_table_name
     feature_info = database_utils_pool_1.fetchall(sql)
     return feature_info
 
@@ -40,6 +46,14 @@ def update_core_feature(tpl_name, core_class_count, core_method_count, core_fine
     print('Core Feature更新数据成功!')
 
 
+def update_core_feature_1(apk_name, tpl_name, core_class_count, core_method_count, core_fined_feature_list):
+    sql = "UPDATE {} SET core_cla_count = %s, core_method_count = %s, core_fined_feature = %s WHERE tpl_name = %s".format(
+        apk_name)
+    value = [core_class_count, core_method_count, str(core_fined_feature_list), tpl_name]
+    database_utils_pool_1.insert_one(sql, value)
+    print('Core Feature更新数据成功!')
+
+
 def update_core_methods(tpl_name, core_method_count):
     sql = "UPDATE {} SET core_method_count = %s WHERE tpl_name = %s".format(TABLE_NAME)
     value = [core_method_count, tpl_name]
@@ -62,5 +76,20 @@ def insert_complete_feature(tpl_name, class_count, method_count, tpl_feature, co
     print('插入数据成功!')
 
 
+def insert_complete_feature_1(apk_name, tpl_name, class_count, method_count, tpl_feature, course_features,
+                              fined_features):
+    sql = "INSERT INTO {} (tpl_name, cla_count, method_count, tpl_feature, course_feature, fined_feature) " \
+          "VALUES (%s, %s, %s, %s, %s, %s) ".format(apk_name)
+    value = [tpl_name, class_count, method_count, tpl_feature, str(course_features), str(fined_features)]
+    database_utils_pool_1.insert_one(sql, value)
+    print('插入数据成功!')
+
+
+def truncate_table(apk_name):
+    sql = 'TRUNCATE TABLE {}'.format(apk_name)
+    database_utils_pool_1.update(sql)
+    print('{} 表内容清除成功'.format(apk_name))
+
+
 if __name__ == '__main__':
-    print(get_all_tpl_feature())
+    print(get_tpl_features('cl_coders_faketraveler_9_src'))

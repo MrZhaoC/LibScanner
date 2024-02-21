@@ -1,6 +1,6 @@
 import ast
+import os
 import re
-import threading
 import time
 
 import Levenshtein
@@ -11,19 +11,11 @@ import generate_feature
 from analysis.core_feature_analysis.android_r8_core_feature.old.core_feature_cluster import \
     get_current_dex_core_feature_clusters
 from database.utils import feature_business_utils
-
-# apk_path = r'D:\Android-exp\exp-example\faketraveler\apk\app-release-unsigned-shrink.apk'
-apk_path = r"F:\zc-data\RQ\RQ1\small-scale\com.appmindlab.nano_1315_src\app-release-unsigned.apk"
-apk_class_names = []
-excel_data = []
-
-a, d_list, dx = AnalyzeAPK(apk_path)
-print('Info: loading and analysis %s' % apk_path)
-
-db_tpl_feature_info = []
+from tools.tools import read_dependency_file
 
 
-def get_class_names():
+def get_class_names(a, d_list):
+    apk_class_names = []
     apk_main_package = a.get_package().split('.')
     apk_main_activity = a.get_main_activity().split('.')  # ??? 返回结果以 .***开头
 
@@ -46,9 +38,10 @@ def get_class_names():
                 continue
             if not str(class_name).startswith(correct_package_name):
                 apk_class_names.append(class_name)
+    return apk_class_names
 
 
-def get_extends_classes():
+def get_extends_classes(d_list, apk_class_names):
     class_graph = nx.DiGraph()
     for d in d_list:
         dex_classes = d.get_classes()
@@ -81,7 +74,7 @@ def get_extends_classes():
     return class_graph
 
 
-def get_annotation_classes():
+def get_annotation_classes(d_list, apk_class_names):
     annotation_graph = nx.DiGraph()
     for d in d_list:
         for cla_relation in d.get_classes():
@@ -115,7 +108,7 @@ def get_annotation_classes():
     return annotation_graph
 
 
-def get_method_classes():
+def get_method_classes(dx, apk_class_names):
     start_time = time.perf_counter()
     method_graph = nx.DiGraph()
     for me in dx.get_methods():
@@ -187,7 +180,7 @@ def get_method_classes():
     return method_graph
 
 
-def get_field_classes():
+def get_field_classes(dx, apk_class_names):
     field_graph = nx.DiGraph()
     fields = dx.get_fields()
     for field in fields:
@@ -218,49 +211,49 @@ def get_field_classes():
     return field_graph
 
 
-class DependencyTread(threading.Thread):
-    def __init__(self, func):
-        super(DependencyTread, self).__init__()
-        self.func = func
+# class DependencyTread(threading.Thread):
+#     def __init__(self, func):
+#         super(DependencyTread, self).__init__()
+#         self.func = func
+#
+#     def run(self):
+#         self.dependency_result = self.func()
+#
+#     def get_dependency_result(self):
+#         try:
+#             return self.dependency_result
+#         except Exception as e:
+#             print(e)
 
-    def run(self):
-        self.dependency_result = self.func()
 
-    def get_dependency_result(self):
-        try:
-            return self.dependency_result
-        except Exception as e:
-            print(e)
-
-
-def compose_graph():
+def compose_graph(d_list, dx, apk_class_names):
     start_time = time.perf_counter()
 
     print('Info: construct class dependency graph')
-    superclass_thread = DependencyTread(get_extends_classes)
-    annotation_thread = DependencyTread(get_annotation_classes)
-    method_thread = DependencyTread(get_method_classes)
-    field_thread = DependencyTread(get_field_classes)
-    # 开启线程
-    superclass_thread.start()
-    annotation_thread.start()
-    method_thread.start()
-    field_thread.start()
-    # 等待线程结束
-    superclass_thread.join()
-    annotation_thread.join()
-    method_thread.join()
-    field_thread.join()
-    # 获取结果
-    superclass_graph = superclass_thread.get_dependency_result()
-    method_graph = method_thread.get_dependency_result()
-    field_graph = field_thread.get_dependency_result()
-    annotation_graph = annotation_thread.get_dependency_result()
+    # superclass_thread = DependencyTread(get_extends_classes)
+    # annotation_thread = DependencyTread(get_annotation_classes)
+    # method_thread = DependencyTread(get_method_classes)
+    # field_thread = DependencyTread(get_field_classes)
+    # # 开启线程
+    # superclass_thread.start()
+    # annotation_thread.start()
+    # method_thread.start()
+    # field_thread.start()
+    # # 等待线程结束
+    # superclass_thread.join()
+    # annotation_thread.join()
+    # method_thread.join()
+    # field_thread.join()
+    # # 获取结果
+    # superclass_graph = superclass_thread.get_dependency_result()
+    # method_graph = method_thread.get_dependency_result()
+    # field_graph = field_thread.get_dependency_result()
+    # annotation_graph = annotation_thread.get_dependency_result()
 
-    # superclass_graph = get_extends_classes()
-    # annotation_graph = get_annotation_classes()
-    # method_graph = get_method_classes()
-    # field_graph = get_field_classes()
+    superclass_graph = get_extends_classes(d_list, apk_class_names)
+    annotation_graph = get_annotation_classes(d_list, apk_class_names)
+    method_graph = get_method_classes(dx, apk_class_names)
+    field_graph = get_field_classes(dx, apk_class_names)
     graph_list = [superclass_graph, method_graph, field_graph, annotation_graph]
     all_graph = nx.compose_all(graph_list)
 
@@ -275,25 +268,18 @@ def compose_graph():
     return dependency_graph
 
 
-# tpl_feature_hash_info: [[cla_count, fined_features],...] 该方法在比较核心特征时使用
-def CFG_opcode():
-    apk_candidate_feature_info = []
-    dependency_graph = compose_graph()
-    for con_components in nx.connected_components(dependency_graph):
-        cla_list = []
-        for cla in con_components:
-            cla = dx.classes[cla]
-            cla_list.append(cla.name)
-        cla_count, fined_features = generate_feature.generate_fined_feature_cfg(dx, cla_list)
-        apk_candidate_feature_info.append([cla_count, fined_features])
-    return dependency_graph, apk_candidate_feature_info
+def main(apk_path, db_table_name, similarity_result):
+    # analysis apk
+    a, d_list, dx = AnalyzeAPK(apk_path)
 
+    apk_class_names = get_class_names(a, d_list)
+    db_tpl_feature_info = format_features_from_db(db_table_name)
 
-def main():
+    dependency_graph = compose_graph(d_list, dx, apk_class_names)
+
     apk_candidate_tpl_features = []
     apk_candidate_course_features = []
     apk_candidate_feature_info = []
-    dependency_graph = compose_graph()
     for con_components in nx.connected_components(dependency_graph):
         cla_list = []
         cla_name_list = []
@@ -309,11 +295,12 @@ def main():
         cla_count, fined_features = generate_feature.generate_fined_feature_cfg(dx, cla_name_list)
         apk_candidate_feature_info.append([cla_count, fined_features])
 
-    found_tpls = compere_tpl_feature(apk_candidate_tpl_features)
-    compere_course_feature(apk_candidate_course_features, found_tpls, apk_candidate_feature_info)
+    found_tpls = compere_tpl_feature(apk_candidate_tpl_features, db_tpl_feature_info, similarity_result)
+    compere_course_feature(apk_candidate_course_features, found_tpls, apk_candidate_feature_info, db_tpl_feature_info,
+                           similarity_result)
 
 
-def compere_tpl_feature(apk_candidate_tpl_features):
+def compere_tpl_feature(apk_candidate_tpl_features, db_tpl_feature_info, similarity_result):
     found_tpls = []
     for db_tpl_item in db_tpl_feature_info:
         tpl_name = db_tpl_item['tpl_name']
@@ -321,13 +308,17 @@ def compere_tpl_feature(apk_candidate_tpl_features):
         tpl_feature = db_tpl_item['tpl_feature']
         if tpl_feature in apk_candidate_tpl_features:
             print('%-80s %-20s  %s' % (tpl_name, 1.0, 'tpl_feature'))
-            # 将数据加入excel_data，写入excel
-            excel_data.append([tpl_name, tpl_class_count, 1.0])
+            # ga = tpl_name.split(':')[0] + ':' + tpl_name.split(':')[1]
+            # # if ga not in similarity_result:
+            # #     similarity_result[ga] = tpl_name.split(':')[2]
+            # similarity_result[ga] = tpl_name.split(':')[2]
+            similarity_result.append(tpl_name)
             found_tpls.append(tpl_name)
     return found_tpls
 
 
-def compere_course_feature(apk_candidate_course_feature_list, found_tpls, apk_candidate_feature_info):
+def compere_course_feature(apk_candidate_course_feature_list, found_tpls, apk_candidate_feature_info,
+                           db_tpl_feature_info, similarity_result):
     COURSE_FEATURE_THRESHOLD = 0
     for db_tpl_item in db_tpl_feature_info:
         tpl_name = db_tpl_item['tpl_name']
@@ -352,21 +343,20 @@ def compere_course_feature(apk_candidate_course_feature_list, found_tpls, apk_ca
                     break  # 不再继续比较其他apk_candidate_course_features
             if max(course_feature_similarity_list) == 1.0:
                 print('%-80s %-20s  %s' % (tpl_name, 1.0, 'course_feature'))
-                # 将数据加入excel_data，写入excel
-                excel_data.append([tpl_name, tpl_class_count, 1.0])
+                # ga = tpl_name.split(':')[0] + ':' + tpl_name.split(':')[1]
+                # # if ga not in similarity_result:
+                # #     similarity_result[ga] = tpl_name.split(':')[2]
+                # similarity_result[ga] = tpl_name.split(':')[2]
+                similarity_result.append(tpl_name)
             elif max(course_feature_similarity_list) >= COURSE_FEATURE_THRESHOLD:
-                # pass
                 # print('%-80s %s  %s' % (tpl_name, max(course_feature_similarity_list), 'course_feature'))
                 # 继续比较细粒度特征
                 compare_single_fine_grained_feature(db_tpl_item, apk_candidate_feature_info)
-            else:
-                # print('%-80s %s' % (tpl_name, max(course_feature_similarity_list)))
-                pass
 
 
 def compare_single_fine_grained_feature(db_tpl_item, apk_candidate_feature_info):
     METHOD_SIM_THRESHOLD = 0.85
-    TPL_SIM_THRESHOLD = 0.95
+    TPL_SIM_THRESHOLD = 0.9
 
     db_tpl_name = db_tpl_item['tpl_name']
     db_tpl_class_count = db_tpl_item['cla_count']
@@ -405,21 +395,20 @@ def compare_single_fine_grained_feature(db_tpl_item, apk_candidate_feature_info)
     if tpl_similarity_comparison_list:
         if max(tpl_similarity_comparison_list) >= TPL_SIM_THRESHOLD:
             print('%-80s %-20s  %s' % (db_tpl_name, max(tpl_similarity_comparison_list), 'fine_grained_feature1'))
-            # 将数据加入excel_data，写入excel
-            # excel_data.append([db_tpl_name, tpl_class_count, max(tpl_similarity_comparison_list)])
+            # ga = db_tpl_name.split(':')[0] + ':' + db_tpl_name.split(':')[1]
+            # # if ga not in similarity_result:
+            # #     similarity_result[ga] = db_tpl_name.split(':')[2]
+            # similarity_result[ga] = db_tpl_name.split(':')[2]
+            similarity_result.append(db_tpl_name)
         else:
+            # print('%-80s %-20s  %s' % (db_tpl_name, max(tpl_similarity_comparison_list), 'fine_grained_feature2'))
             # 比较核心特征
             compare_core_feature_and_cluster(db_tpl_item, apk_candidate_feature_info)
-            # print('%-80s %-20s  %s' % (db_tpl_name, max(tpl_similarity_comparison_list), 'fine_grained_feature2'))
-        # 将数据加入excel_data，写入excel
-        excel_data.append([db_tpl_name, db_tpl_class_count, max(tpl_similarity_comparison_list)])
-    else:
-        pass
 
 
 def compare_core_feature_and_cluster(db_tpl_item, apk_candidate_feature_info):
     METHOD_SIM_THRESHOLD = 0.85
-    TPL_SIM_THRESHOLD = 0.95
+    TPL_SIM_THRESHOLD = 0.9
 
     db_tpl_name = db_tpl_item['tpl_name']
     db_tpl_core_class_count = db_tpl_item['core_cla_count']
@@ -464,6 +453,11 @@ def compare_core_feature_and_cluster(db_tpl_item, apk_candidate_feature_info):
     # 核心特征并集特征相似度达到阈值之后不再进行比较
     if sim >= TPL_SIM_THRESHOLD:
         print('%-80s %-20s  %s' % (db_tpl_name, sim, 'core_feature_union'))
+        # ga = db_tpl_name.split(':')[0] + ':' + db_tpl_name.split(':')[1]
+        # # if ga not in similarity_result:
+        # #     similarity_result[ga] = db_tpl_name.split(':')[2]
+        # similarity_result[ga] = db_tpl_name.split(':')[2]
+        similarity_result.append(db_tpl_name)
         return
 
     # 核心特征并集特征相似度到不到阈值，继续比较划分后的核心特征
@@ -474,209 +468,18 @@ def compare_core_feature_and_cluster(db_tpl_item, apk_candidate_feature_info):
         match_list.append(cls_sim)
     if match_list:
         print('%-80s %-20s  %s' % (db_tpl_name, max(match_list), 'core_feature_cluster'))
-    else:
-        print('%-80s %-20s  %s' % (db_tpl_name, 0, 'core_feature_cluster'))
+        if max(match_list) >= TPL_SIM_THRESHOLD:
+            # ga = db_tpl_name.split(':')[0] + ':' + db_tpl_name.split(':')[1]
+            # # if ga not in similarity_result:
+            # #     similarity_result[ga] = db_tpl_name.split(':')[2]
+            # similarity_result[ga] = db_tpl_name.split(':')[2]
+            similarity_result.append(db_tpl_name)
+    # else:
+    #     print('%-80s %-20s  %s' % (db_tpl_name, 0, 'core_feature_cluster'))
 
 
-# 在比较全部细粒度特征时使用
-def compare_all_fine_grained_feature():
-    dependency_graph, apk_candidate_feature_info = CFG_opcode()
-
-    METHOD_SIM_THRESHOLD = 0.85
-    TPL_SIM_THRESHOLD = 0.92
-
-    start_time = time.perf_counter()
-
-    # 数据库中的每一条特征记录
-    for db_tpl_item in db_tpl_feature_info:
-        db_tpl_name = db_tpl_item['tpl_name']
-        db_tpl_class_count = db_tpl_item['cla_count']
-        db_tpl_method_count = db_tpl_item['method_count']
-        # 方法生成的细粒度特征的集合
-        db_tpl_fine_grained_feature = db_tpl_item['fined_feature']
-
-        # # 9-27 添加
-        # db_tpl_core_class_count = db_tpl_item['core_cla_count']
-        # db_tpl_core_method_count = db_tpl_item['core_method_count']
-        # db_tpl_core_fine_grained_feature = db_tpl_item['core_fined_feature']
-        #
-        # # core_feature可能为空
-        # if db_tpl_core_class_count == 0 or db_tpl_core_fine_grained_feature is None or db_tpl_core_method_count == 0:
-        #     continue
-
-        tpl_similarity_comparison_list = []
-        for apk_candidate_item in apk_candidate_feature_info:  # apk中
-            apk_candidate_class_count = apk_candidate_item[0]
-            apk_candidate_fine_grained_feature = apk_candidate_item[1]
-
-            # apk中候选类的数量 / 数据库tpl中类的数量 < 0.4 不继续比较这个candidate
-            if apk_candidate_class_count / int(db_tpl_class_count) < 0.4:
-                continue
-
-            method_similarity_score_list = []
-            for db_tpl_method_feature in db_tpl_fine_grained_feature:  # database tpl method feature
-                for apk_candidate_method_feature in apk_candidate_fine_grained_feature:  # apk candidate method feature
-                    # 计算两个方法特征值的编辑距离
-                    distance = Levenshtein.distance(apk_candidate_method_feature, db_tpl_method_feature)
-                    method_similarity_score = 1 - distance / max(len(apk_candidate_method_feature),
-                                                                 len(db_tpl_method_feature))
-                    if method_similarity_score >= METHOD_SIM_THRESHOLD:
-                        method_similarity_score_list.append(method_similarity_score)
-                        # db_tpl_method_feature 找到之后不再寻找，继续比较下一个 db_tpl_method_feature
-                        break
-
-            # 计算细粒度特征匹配的比例
-            tpl_similarity_comparison = len(method_similarity_score_list) / len(db_tpl_fine_grained_feature)
-
-            tpl_similarity_comparison_list.append(tpl_similarity_comparison)
-            # tpl相似度大于设置阈值
-            if max(tpl_similarity_comparison_list) >= TPL_SIM_THRESHOLD:
-                break  # 不在剩余candidate中比较，继续比较数据库
-
-        if tpl_similarity_comparison_list:
-            if max(tpl_similarity_comparison_list) >= TPL_SIM_THRESHOLD:
-                print('%-80s %-20s  %s' % (db_tpl_name, max(tpl_similarity_comparison_list), 'fine_grained_feature1'))
-                # 将数据加入excel_data，写入excel
-                # excel_data.append([db_tpl_name, tpl_class_count, max(tpl_similarity_comparison_list)])
-            else:
-                print('%-80s %-20s  %s' % (db_tpl_name, max(tpl_similarity_comparison_list), 'fine_grained_feature2'))
-            # 将数据加入excel_data，写入excel
-            excel_data.append(
-                [db_tpl_name, db_tpl_class_count, db_tpl_method_count, max(tpl_similarity_comparison_list)])
-        else:
-            pass
-    end_time = time.perf_counter()
-    print('\n{}个TPL完成检测，花费时间{}秒'.format(len(excel_data), end_time - start_time))
-
-
-def compare_core_feature():
-    dependency_graph, apk_candidate_feature_info = CFG_opcode()
-
-    METHOD_SIM_THRESHOLD = 0.85
-    TPL_SIM_THRESHOLD = 0.95
-
-    for db_tpl_item in db_tpl_feature_info:
-
-        db_tpl_name = db_tpl_item['tpl_name']
-        db_tpl_core_class_count = db_tpl_item['core_cla_count']
-        db_tpl_core_method_count = db_tpl_item['core_method_count']
-        db_tpl_core_fine_grained_feature = db_tpl_item['core_fined_feature']
-
-        # core_feature可能为空
-        if db_tpl_core_class_count == 0 or db_tpl_core_fine_grained_feature is None or len(
-                db_tpl_core_fine_grained_feature) == 0:
-            print('%-80s %s' % (db_tpl_name, 0))
-            continue
-
-        tpl_similarity_comparison_list = []
-        for item in apk_candidate_feature_info:
-            apk_candidate_class_count = item[0]
-            apk_candidate_fine_grained_feature = item[1]
-
-            # if apk_candidate_class_count / db_tpl_core_class_count < 0.4:
-            #     continue
-
-            method_similarity_score_list = []
-            for db_tpl_method_feature in db_tpl_core_fine_grained_feature:  # dex文件method hash
-                for apk_candidate_method_feature in apk_candidate_fine_grained_feature:  # APK中 method hash
-                    distance = Levenshtein.distance(apk_candidate_method_feature, db_tpl_method_feature)
-                    method_similarity_score = 1 - distance / max(len(apk_candidate_method_feature),
-                                                                 len(db_tpl_method_feature))
-                    if method_similarity_score >= METHOD_SIM_THRESHOLD:
-                        method_similarity_score_list.append(method_similarity_score)
-                        break  # 找到之后不再寻找
-
-            tpl_similarity_comparison = len(method_similarity_score_list) / len(db_tpl_core_fine_grained_feature)
-
-            tpl_similarity_comparison_list.append(tpl_similarity_comparison)
-            # tpl相似度大于设置阈值
-            if max(tpl_similarity_comparison_list) >= TPL_SIM_THRESHOLD:
-                break  # 不在剩余candidate中比较，继续比较数据库
-
-        if tpl_similarity_comparison_list:
-            if max(tpl_similarity_comparison_list) >= TPL_SIM_THRESHOLD:
-                print('%-80s %s' % (db_tpl_name, max(tpl_similarity_comparison_list)))
-            else:
-                print('%-80s %s' % (db_tpl_name, max(tpl_similarity_comparison_list)))
-            excel_data.append([db_tpl_name, db_tpl_core_method_count, max(tpl_similarity_comparison_list)])
-        else:
-            pass
-
-
-def compare_core_feature_1():
-    dependency_graph, apk_candidate_feature_info = CFG_opcode()
-
-    METHOD_SIM_THRESHOLD = 0.85
-    TPL_SIM_THRESHOLD = 0.95
-
-    res = []
-
-    for db_tpl_item in db_tpl_feature_info:
-
-        db_tpl_name = db_tpl_item['tpl_name']
-        db_tpl_core_class_count = db_tpl_item['core_cla_count']
-        db_tpl_core_method_count = db_tpl_item['core_method_count']
-        db_tpl_core_fine_grained_feature = db_tpl_item['core_fined_feature']
-
-        # core_feature可能为空
-        if db_tpl_core_class_count == 0 or db_tpl_core_fine_grained_feature is None or len(
-                db_tpl_core_fine_grained_feature) == 0:
-            # print('%-80s %s' % (db_tpl_name, 0))
-            res.append([db_tpl_name, 0, db_tpl_core_method_count, 0])
-            continue
-
-        sim = 0
-        best_match_method_list = []
-
-        for item in apk_candidate_feature_info:  # apk候选特征
-            apk_candidate_class_count = item[0]
-            apk_candidate_fine_grained_feature = item[1]
-
-            # if apk_candidate_class_count / db_tpl_core_class_count < 0.4:
-            #     continue
-
-            method_similarity_score_list = []
-            match_method_list = []
-
-            for db_tpl_method_feature in db_tpl_core_fine_grained_feature:  # dex文件method hash
-                for apk_candidate_method_feature in apk_candidate_fine_grained_feature:  # APK中 method hash
-                    distance = Levenshtein.distance(apk_candidate_method_feature, db_tpl_method_feature)
-                    method_similarity_score = 1 - distance / max(len(apk_candidate_method_feature),
-                                                                 len(db_tpl_method_feature))
-                    if method_similarity_score >= METHOD_SIM_THRESHOLD:
-                        method_similarity_score_list.append(method_similarity_score)
-                        match_method_list.append(db_tpl_method_feature)
-                        break  # 找到之后不再寻找
-
-            tpl_similarity_comparison = len(method_similarity_score_list) / len(db_tpl_core_fine_grained_feature)
-            if tpl_similarity_comparison > sim:
-                sim = tpl_similarity_comparison
-                best_match_method_list = match_method_list
-                # best_match_tpl_name = db_tpl_name
-
-        # 核心特征并集特征相似度达到阈值之后不再进行比较
-        if sim >= TPL_SIM_THRESHOLD:
-            print('%-80s %-20s  %s' % (db_tpl_name, sim, 'core_feature_union'))
-            continue
-
-        # 核心特征并集特征相似度到不到阈值，继续比较划分后的核心特征
-        clusters_num, clusters = get_current_dex_core_feature_clusters(db_tpl_name)  # 得到划分后的核心特征集合
-        match_list = []
-        for cls in clusters:
-            cls_sim = len(cls.intersection(set(best_match_method_list))) / len(cls)
-            match_list.append(cls_sim)
-        if match_list:
-            print('%-80s %-20s  %s' % (db_tpl_name, max(match_list), 'core_feature_cluster'))
-            # res.append([db_tpl_name, clusters_num, db_tpl_core_method_count, max(match_list)])
-        else:
-            print('%-80s %-20s  %s' % (db_tpl_name, 0, 'core_feature_cluster'))
-            # res.append([db_tpl_name, clusters_num, db_tpl_core_method_count, 0])
-    # return res
-
-
-def format_features_from_db():
-    start_time = time.perf_counter()
-    data = feature_business_utils.get_all_tpl_feature()
+def format_features_from_db(db_table_name):
+    data = feature_business_utils.get_tpl_features(db_table_name)
     for tpl_info in data:
         tpl_info['course_feature'] = ast.literal_eval(tpl_info['course_feature'])
         tpl_info['fined_feature'] = ast.literal_eval(tpl_info['fined_feature'])
@@ -684,22 +487,60 @@ def format_features_from_db():
             tpl_info['core_fined_feature'] = ast.literal_eval(tpl_info['core_fined_feature'])
         else:
             tpl_info['core_fined_feature'] = []
-    end_time = time.perf_counter()
-    print('查询数据花费了 {}'.format(end_time - start_time))
-    return data
+    # 过滤掉没有核心特征的tpl
+    db_feature_data = []
+    for tpl_info in data:
+        if tpl_info['core_fined_feature']:
+            db_feature_data.append(tpl_info)
+    return db_feature_data
+
+
+# 清空数据库特征表
+# def for_test():
+#     path = r'F:\zc-data\RQ\RQ2\apks'
+#     apk_folders = os.listdir(path)
+#     for apk_folder in apk_folders:
+#         format_features_from_db(apk_folder.replace('.', '_'))
 
 
 if __name__ == '__main__':
-    get_class_names()
-    db_tpl_feature_info = format_features_from_db()
+    path = r'F:\zc-data\RQ\RQ2\apks'
 
-    # main()
-    compare_all_fine_grained_feature()
-    # compare_core_feature()
+    apk_folders = os.listdir(path)
 
-    # compare_core_feature_1()
+    for apk_folder in apk_folders:
+        apk_folder_path = os.path.join(path, apk_folder)
+        folder_under_files = os.listdir(apk_folder_path)
 
-    # write_file_flag = False
-    # path = r"D:\zc\第三方库检测实验数据\2023-09-07.xlsx"
-    # if write_file_flag:
-    #     write_excel_xlsx(path, "complete-compare", best_match_sim)
+        # 解析依赖树文件，获取项目依赖项
+        apk_dependency_tree_file_path = os.path.join(apk_folder_path, 'dependency1.txt')
+        dependency_list = read_dependency_file(apk_dependency_tree_file_path)
+
+        # similarity_result = {}
+        similarity_result = []
+
+        apk_path = ''
+        for folder_under_file in folder_under_files:
+
+            # todo: 验证未收缩代码开启改行代码即可
+            # if not folder_under_file.endswith('-shrink.apk'):
+
+            if folder_under_file.endswith('-shrink.apk'):
+                apk_path = os.path.join(apk_folder_path, folder_under_file)
+                break
+        main(apk_path, apk_folder.replace('.', '_'), similarity_result)
+
+        print(similarity_result)
+
+        # todo：需要修改
+        match_num = 0
+        # for key in similarity_result:
+        #     gav = key + ':' + similarity_result[key]
+        #     if gav in dependency_list:
+        #         match_num += 1
+        for e in similarity_result:
+            if e in dependency_list:
+                match_num += 1
+
+        print(len(dependency_list), len(similarity_result), match_num)
+

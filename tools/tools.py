@@ -63,6 +63,30 @@ def get_dependency_from_file(dependencies_file_path):
     return set(dependencies_list)
 
 
+def read_dependency_file(dep_file_path):
+    dependencies_list = []
+    with open(dep_file_path, 'r') as f:
+        # 排除第一行非依赖项的影响
+        f.readline()
+        content = f.readlines()
+        for line in content:
+            if line.strip() == '':
+                continue
+            tpl = line.split('@')[0]
+            tpl = tpl.replace('|', '').replace('+', '').replace('---', '').replace('\\', '').lstrip()
+            if '>' in tpl:
+                tpl = tpl.split('->')
+                gav = tpl[0].split(':')
+                final_gav = gav[0] + ':' + gav[1] + ':' + tpl[1].strip().replace('(*)', '').replace('(c)', '').strip()
+                dependencies_list.append(final_gav)
+            else:
+                _gav = tpl.replace('(*)', '').replace('(c)', '').strip()
+                dependencies_list.append(_gav)
+    print('原依赖树依赖项个数：', len(dependencies_list))
+    print('去重之后依赖项个数：', len(set(dependencies_list)))
+    return set(dependencies_list)
+
+
 def write_excel_xlsx(path, sheet_name, values):
     """
     将values数据写入path中的sheet_name
@@ -182,8 +206,12 @@ def format_method_keep_rule(method_name_set):
                 j_types.append(j_type)
             temp = ', '.join(j_types)
             param_res = '({});'.format(temp)
-        keep_rule = '-keep class %s { %s%s }' % (class_name, method_name, param_res)
-        method_keep_rules.add(keep_rule)
+        keep_rule_class_method = '-keep class %s { %s%s }' % (class_name, method_name, param_res)
+        # todo：新添加
+        # keep_rule_class_constructor = '-keep class %s { <init>(...); }' % class_name
+        method_keep_rules.add(keep_rule_class_method)
+        # todo：新添加
+        # method_keep_rules.add(keep_rule_class_constructor)
     return method_keep_rules
 
 
@@ -231,8 +259,8 @@ def android_r8_shrink(output_path, pg_conf_path, input_path, tpl_name):
     new_path = os.path.join(output_path, tpl_name + '.dex')
     try:
         # 2023-09-20 修改
-        # os.rename(old_path, new_path)
-        shutil.move(old_path, new_path)
+        os.rename(old_path, new_path)
+        # shutil.move(old_path, new_path)
     except FileNotFoundError:
         print(f"File '{old_path}' not found.")
     except PermissionError:

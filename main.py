@@ -1,7 +1,7 @@
 import argparse
 import sys
 
-from atv_hunter_v_2_1_test import ATVHunter
+# 引入ATVHunter
 
 # parser = argparse.ArgumentParser(prog="ATVHunter")
 # parser = argparse.ArgumentParser(usage="python main.py --apk apk_path")
