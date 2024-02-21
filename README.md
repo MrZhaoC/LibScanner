@@ -75,7 +75,7 @@ LibScanner在这个部分的主要任务是排除开发者编写的代码模块�
 
 特征数据库表的主要字段如下：TPL的group_id、artifact_id、version、package_name等基本信息，另外就是TPL特征相关信息：完全特征包括TPL特征、粗粒度特征、细粒度特征；核心特征是根据细粒度方式构建的。
 
-![image-20240218194016101](images\image-20240218194016101.png)
+<img src="images\image-20240218194016101.png" alt="image-20240218194016101.png" style="zoom:50%;" />
 
 ### 完全特征构建
 
